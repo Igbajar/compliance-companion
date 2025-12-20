@@ -10,6 +10,7 @@ import Risks from "./pages/Risks";
 import Audits from "./pages/Audits";
 import Nonconformities from "./pages/Nonconformities";
 import Clauses from "./pages/Clauses";
+import Training from "./pages/Training";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -33,7 +34,7 @@ const App = () => (
           <Route path="/audits" element={<PageWrapper><Audits /></PageWrapper>} />
           <Route path="/nonconformities" element={<PageWrapper><Nonconformities /></PageWrapper>} />
           <Route path="/capa" element={<PageWrapper><div className="text-foreground">CAPA Module - Coming Soon</div></PageWrapper>} />
-          <Route path="/training" element={<PageWrapper><div className="text-foreground">Training Module - Coming Soon</div></PageWrapper>} />
+          <Route path="/training" element={<PageWrapper><Training /></PageWrapper>} />
           <Route path="/reports" element={<PageWrapper><div className="text-foreground">Reports Module - Coming Soon</div></PageWrapper>} />
           <Route path="/management-review" element={<PageWrapper><div className="text-foreground">Management Review - Coming Soon</div></PageWrapper>} />
           <Route path="/settings" element={<PageWrapper><div className="text-foreground">Settings - Coming Soon</div></PageWrapper>} />
