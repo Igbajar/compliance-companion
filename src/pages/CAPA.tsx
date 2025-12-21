@@ -26,6 +26,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import {
   AlertTriangle,
@@ -47,7 +48,10 @@ import {
   Play,
   Pause,
   RotateCcw,
+  Pencil,
 } from "lucide-react";
+import CAPAForm, { CAPAFormValues } from "@/components/capa/CAPAForm";
+import { toast } from "@/hooks/use-toast";
 
 // Mock data for CAPA actions
 const capaActions = [
@@ -232,6 +236,8 @@ export default function CAPA() {
   const [typeFilter, setTypeFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [priorityFilter, setPriorityFilter] = useState("all");
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [editingAction, setEditingAction] = useState<typeof capaActions[0] | null>(null);
 
   const filteredActions = capaActions.filter((action) => {
     const matchesSearch = 
@@ -253,6 +259,26 @@ export default function CAPA() {
   const closedCount = capaActions.filter(a => a.status === "Closed").length;
   const effectivenessRate = closedCount > 0 ? Math.round((effectiveCount / closedCount) * 100) : 0;
 
+  const handleCreateCAPA = (data: CAPAFormValues, evidence: any[]) => {
+    // In a real app, this would save to the database
+    console.log("Creating CAPA:", data, evidence);
+    toast({
+      title: "CAPA Created",
+      description: `${data.title} has been created successfully`,
+    });
+    setIsCreateDialogOpen(false);
+  };
+
+  const handleEditCAPA = (data: CAPAFormValues, evidence: any[]) => {
+    // In a real app, this would update the database
+    console.log("Updating CAPA:", editingAction?.id, data, evidence);
+    toast({
+      title: "CAPA Updated",
+      description: `${editingAction?.id} has been updated successfully`,
+    });
+    setEditingAction(null);
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -263,11 +289,59 @@ export default function CAPA() {
             Corrective & Preventive Action tracking with SLA monitoring
           </p>
         </div>
-        <Button className="gap-2">
-          <Plus className="h-4 w-4" />
-          New CAPA
-        </Button>
+        <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+          <DialogTrigger asChild>
+            <Button className="gap-2">
+              <Plus className="h-4 w-4" />
+              New CAPA
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto bg-card border-border">
+            <DialogHeader>
+              <DialogTitle>Create New CAPA</DialogTitle>
+              <DialogDescription>
+                Fill in the details to create a new Corrective or Preventive Action
+              </DialogDescription>
+            </DialogHeader>
+            <CAPAForm
+              onSubmit={handleCreateCAPA}
+              onCancel={() => setIsCreateDialogOpen(false)}
+            />
+          </DialogContent>
+        </Dialog>
       </div>
+
+      {/* Edit Dialog */}
+      <Dialog open={!!editingAction} onOpenChange={(open) => !open && setEditingAction(null)}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto bg-card border-border">
+          <DialogHeader>
+            <DialogTitle>Edit CAPA - {editingAction?.id}</DialogTitle>
+            <DialogDescription>
+              Update the details of this Corrective or Preventive Action
+            </DialogDescription>
+          </DialogHeader>
+          {editingAction && (
+            <CAPAForm
+              isEditing
+              defaultValues={{
+                title: editingAction.title,
+                type: editingAction.type as "Corrective" | "Preventive",
+                source: editingAction.source,
+                sourceType: editingAction.sourceType as any,
+                priority: editingAction.priority as "High" | "Medium" | "Low",
+                owner: editingAction.owner,
+                department: editingAction.department,
+                dueDate: new Date(editingAction.dueDate),
+                rootCause: editingAction.rootCause,
+                description: editingAction.description,
+                verificationRequired: editingAction.verificationRequired,
+              }}
+              onSubmit={handleEditCAPA}
+              onCancel={() => setEditingAction(null)}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
@@ -477,85 +551,94 @@ export default function CAPA() {
                           </Badge>
                         </TableCell>
                         <TableCell>
-                          <Dialog>
-                            <DialogTrigger asChild>
-                              <Button variant="ghost" size="sm">
-                                View
-                              </Button>
-                            </DialogTrigger>
-                            <DialogContent className="max-w-2xl bg-card border-border">
-                              <DialogHeader>
-                                <DialogTitle className="flex items-center gap-2">
-                                  <span className="text-primary">{action.id}</span>
-                                  <Badge variant="outline" className={getTypeBadge(action.type)}>
-                                    {action.type}
-                                  </Badge>
-                                </DialogTitle>
-                              </DialogHeader>
-                              <div className="space-y-4">
-                                <div>
-                                  <h4 className="font-semibold text-foreground">{action.title}</h4>
-                                  <p className="text-sm text-muted-foreground mt-1">{action.description}</p>
-                                </div>
-                                
-                                <div className="grid grid-cols-2 gap-4">
-                                  <div className="space-y-1">
-                                    <p className="text-xs text-muted-foreground">Root Cause</p>
-                                    <p className="text-sm">{action.rootCause}</p>
+                          <div className="flex items-center gap-1">
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              onClick={() => setEditingAction(action)}
+                              className="h-8 w-8 p-0"
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Dialog>
+                              <DialogTrigger asChild>
+                                <Button variant="ghost" size="sm">
+                                  View
+                                </Button>
+                              </DialogTrigger>
+                              <DialogContent className="max-w-2xl bg-card border-border">
+                                <DialogHeader>
+                                  <DialogTitle className="flex items-center gap-2">
+                                    <span className="text-primary">{action.id}</span>
+                                    <Badge variant="outline" className={getTypeBadge(action.type)}>
+                                      {action.type}
+                                    </Badge>
+                                  </DialogTitle>
+                                </DialogHeader>
+                                <div className="space-y-4">
+                                  <div>
+                                    <h4 className="font-semibold text-foreground">{action.title}</h4>
+                                    <p className="text-sm text-muted-foreground mt-1">{action.description}</p>
                                   </div>
-                                  <div className="space-y-1">
-                                    <p className="text-xs text-muted-foreground">Source</p>
-                                    <p className="text-sm">{action.source} ({action.sourceType})</p>
+                                  
+                                  <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-1">
+                                      <p className="text-xs text-muted-foreground">Root Cause</p>
+                                      <p className="text-sm">{action.rootCause}</p>
+                                    </div>
+                                    <div className="space-y-1">
+                                      <p className="text-xs text-muted-foreground">Source</p>
+                                      <p className="text-sm">{action.source} ({action.sourceType})</p>
+                                    </div>
+                                    <div className="space-y-1">
+                                      <p className="text-xs text-muted-foreground">Owner</p>
+                                      <p className="text-sm">{action.owner} - {action.department}</p>
+                                    </div>
+                                    <div className="space-y-1">
+                                      <p className="text-xs text-muted-foreground">Due Date</p>
+                                      <p className="text-sm">{action.dueDate}</p>
+                                    </div>
                                   </div>
-                                  <div className="space-y-1">
-                                    <p className="text-xs text-muted-foreground">Owner</p>
-                                    <p className="text-sm">{action.owner} - {action.department}</p>
-                                  </div>
-                                  <div className="space-y-1">
-                                    <p className="text-xs text-muted-foreground">Due Date</p>
-                                    <p className="text-sm">{action.dueDate}</p>
-                                  </div>
-                                </div>
 
-                                {/* Workflow Progress */}
-                                <div className="pt-4 border-t border-border">
-                                  <p className="text-sm font-medium mb-3">Workflow Progress</p>
-                                  <div className="flex items-center justify-between">
-                                    {workflowStages.map((stage, index) => {
-                                      const currentIndex = getStageIndex(action.stage);
-                                      const isCompleted = index < currentIndex;
-                                      const isCurrent = index === currentIndex;
-                                      return (
-                                        <div key={stage.id} className="flex items-center">
-                                          <div className={`flex flex-col items-center ${index < workflowStages.length - 1 ? 'w-full' : ''}`}>
-                                            <div className={`h-8 w-8 rounded-full flex items-center justify-center ${
-                                              isCompleted ? 'bg-success text-success-foreground' :
-                                              isCurrent ? 'bg-primary text-primary-foreground' :
-                                              'bg-muted text-muted-foreground'
-                                            }`}>
-                                              <stage.icon className="h-4 w-4" />
+                                  {/* Workflow Progress */}
+                                  <div className="pt-4 border-t border-border">
+                                    <p className="text-sm font-medium mb-3">Workflow Progress</p>
+                                    <div className="flex items-center justify-between">
+                                      {workflowStages.map((stage, index) => {
+                                        const currentIndex = getStageIndex(action.stage);
+                                        const isCompleted = index < currentIndex;
+                                        const isCurrent = index === currentIndex;
+                                        return (
+                                          <div key={stage.id} className="flex items-center">
+                                            <div className={`flex flex-col items-center ${index < workflowStages.length - 1 ? 'w-full' : ''}`}>
+                                              <div className={`h-8 w-8 rounded-full flex items-center justify-center ${
+                                                isCompleted ? 'bg-success text-success-foreground' :
+                                                isCurrent ? 'bg-primary text-primary-foreground' :
+                                                'bg-muted text-muted-foreground'
+                                              }`}>
+                                                <stage.icon className="h-4 w-4" />
+                                              </div>
+                                              <span className={`text-xs mt-1 ${isCurrent ? 'text-primary font-medium' : 'text-muted-foreground'}`}>
+                                                {stage.label}
+                                              </span>
                                             </div>
-                                            <span className={`text-xs mt-1 ${isCurrent ? 'text-primary font-medium' : 'text-muted-foreground'}`}>
-                                              {stage.label}
-                                            </span>
+                                            {index < workflowStages.length - 1 && (
+                                              <div className={`h-0.5 w-8 mx-1 ${isCompleted ? 'bg-success' : 'bg-border'}`} />
+                                            )}
                                           </div>
-                                          {index < workflowStages.length - 1 && (
-                                            <div className={`h-0.5 w-8 mx-1 ${isCompleted ? 'bg-success' : 'bg-border'}`} />
-                                          )}
-                                        </div>
-                                      );
-                                    })}
+                                        );
+                                      })}
+                                    </div>
+                                  </div>
+
+                                  <div className="flex gap-2 pt-4">
+                                    <Button className="flex-1">Advance Stage</Button>
+                                    <Button variant="outline" onClick={() => setEditingAction(action)}>Edit</Button>
                                   </div>
                                 </div>
-
-                                <div className="flex gap-2 pt-4">
-                                  <Button className="flex-1">Advance Stage</Button>
-                                  <Button variant="outline">Edit</Button>
-                                  <Button variant="outline">Add Evidence</Button>
-                                </div>
-                              </div>
-                            </DialogContent>
-                          </Dialog>
+                              </DialogContent>
+                            </Dialog>
+                          </div>
                         </TableCell>
                       </TableRow>
                     );
