@@ -13,6 +13,7 @@ import Clauses from "./pages/Clauses";
 import Training from "./pages/Training";
 import CAPA from "./pages/CAPA";
 import ManagementReview from "./pages/ManagementReview";
+import Reports from "./pages/Reports";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -37,7 +38,7 @@ const App = () => (
           <Route path="/nonconformities" element={<PageWrapper><Nonconformities /></PageWrapper>} />
           <Route path="/capa" element={<PageWrapper><CAPA /></PageWrapper>} />
           <Route path="/training" element={<PageWrapper><Training /></PageWrapper>} />
-          <Route path="/reports" element={<PageWrapper><div className="text-foreground">Reports Module - Coming Soon</div></PageWrapper>} />
+          <Route path="/reports" element={<PageWrapper><Reports /></PageWrapper>} />
           <Route path="/management-review" element={<PageWrapper><ManagementReview /></PageWrapper>} />
           <Route path="/settings" element={<PageWrapper><div className="text-foreground">Settings - Coming Soon</div></PageWrapper>} />
           <Route path="*" element={<NotFound />} />
