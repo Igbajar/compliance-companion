@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard,
   FileText,
@@ -14,8 +14,11 @@ import {
   ChevronLeft,
   ChevronRight,
   BookOpen,
+  LogOut,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/hooks/use-toast";
 
 const navItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/" },
@@ -33,6 +36,18 @@ const navItems = [
 const Sidebar = () => {
   const [collapsed, setCollapsed] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
+  const { signOut, user } = useAuth();
+  const { toast } = useToast();
+
+  const handleSignOut = async () => {
+    await signOut();
+    toast({
+      title: "Signed out",
+      description: "You have been signed out successfully.",
+    });
+    navigate("/auth");
+  };
 
   return (
     <aside
@@ -90,8 +105,15 @@ const Sidebar = () => {
         })}
       </nav>
 
-      {/* Settings at bottom */}
-      <div className="absolute bottom-4 left-0 right-0 px-3">
+      {/* User info and actions at bottom */}
+      <div className="absolute bottom-4 left-0 right-0 px-3 space-y-2">
+        {/* User email */}
+        {!collapsed && user && (
+          <div className="px-3 py-2 text-xs text-muted-foreground truncate">
+            {user.email}
+          </div>
+        )}
+        
         <Link
           to="/settings"
           className={cn(
@@ -104,6 +126,18 @@ const Sidebar = () => {
           <Settings className="w-5 h-5 flex-shrink-0" />
           {!collapsed && <span className="text-sm font-medium">Settings</span>}
         </Link>
+        
+        <button
+          onClick={handleSignOut}
+          className={cn(
+            "nav-item w-full text-left",
+            collapsed && "justify-center px-3"
+          )}
+          title={collapsed ? "Sign Out" : undefined}
+        >
+          <LogOut className="w-5 h-5 flex-shrink-0" />
+          {!collapsed && <span className="text-sm font-medium">Sign Out</span>}
+        </button>
       </div>
     </aside>
   );
