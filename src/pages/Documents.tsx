@@ -1,101 +1,17 @@
 import { useState } from "react";
-import { FileText, Plus, Search, Filter, Eye, Edit, Trash2, CheckCircle, Clock, XCircle, Download } from "lucide-react";
+import { FileText, Plus, Search, Filter, Eye, Edit, Trash2, CheckCircle, Clock, XCircle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-
-interface Document {
-  id: string;
-  number: string;
-  title: string;
-  type: "policy" | "procedure" | "work-instruction" | "form" | "record";
-  version: string;
-  status: "draft" | "in-review" | "approved" | "obsolete";
-  owner: string;
-  department: string;
-  lastUpdated: string;
-  clause: string;
-}
-
-const documents: Document[] = [
-  {
-    id: "1",
-    number: "QMS-POL-001",
-    title: "Quality Policy",
-    type: "policy",
-    version: "3.0",
-    status: "approved",
-    owner: "John Smith",
-    department: "Quality",
-    lastUpdated: "2024-12-01",
-    clause: "5.2",
-  },
-  {
-    id: "2",
-    number: "QMS-PRO-015",
-    title: "Document Control Procedure",
-    type: "procedure",
-    version: "2.1",
-    status: "approved",
-    owner: "Sarah Johnson",
-    department: "Quality",
-    lastUpdated: "2024-11-28",
-    clause: "7.5",
-  },
-  {
-    id: "3",
-    number: "QMS-WI-042",
-    title: "Internal Audit Process",
-    type: "work-instruction",
-    version: "1.5",
-    status: "in-review",
-    owner: "Mike Chen",
-    department: "Quality",
-    lastUpdated: "2024-12-18",
-    clause: "9.2",
-  },
-  {
-    id: "4",
-    number: "QMS-FRM-108",
-    title: "Corrective Action Request Form",
-    type: "form",
-    version: "4.0",
-    status: "approved",
-    owner: "Emily Davis",
-    department: "Quality",
-    lastUpdated: "2024-10-15",
-    clause: "10.2",
-  },
-  {
-    id: "5",
-    number: "ISMS-POL-001",
-    title: "Information Security Policy",
-    type: "policy",
-    version: "2.0",
-    status: "draft",
-    owner: "David Lee",
-    department: "IT Security",
-    lastUpdated: "2024-12-19",
-    clause: "A.5",
-  },
-  {
-    id: "6",
-    number: "EMS-PRO-003",
-    title: "Environmental Aspects Procedure",
-    type: "procedure",
-    version: "1.2",
-    status: "approved",
-    owner: "Lisa Wang",
-    department: "HSE",
-    lastUpdated: "2024-09-20",
-    clause: "6.1.2",
-  },
-];
+import { useDocuments, type Document } from "@/hooks/useDocuments";
+import { DocumentFormDialog } from "@/components/documents/DocumentFormDialog";
+import { DeleteDocumentDialog } from "@/components/documents/DeleteDocumentDialog";
+import { format } from "date-fns";
 
 const getStatusStyle = (status: Document["status"]) => {
   switch (status) {
-    case "approved":
+    case "current":
       return "status-compliant";
-    case "in-review":
+    case "under_review":
       return "status-partial";
     case "draft":
       return "status-open";
@@ -108,9 +24,9 @@ const getStatusStyle = (status: Document["status"]) => {
 
 const getStatusIcon = (status: Document["status"]) => {
   switch (status) {
-    case "approved":
+    case "current":
       return CheckCircle;
-    case "in-review":
+    case "under_review":
       return Clock;
     case "draft":
       return Edit;
@@ -127,30 +43,99 @@ const getTypeStyle = (type: Document["type"]) => {
       return "bg-primary/20 text-primary";
     case "procedure":
       return "bg-info/20 text-info";
-    case "work-instruction":
+    case "work_instruction":
       return "bg-success/20 text-success";
     case "form":
       return "bg-warning/20 text-warning";
-    case "record":
+    case "manual":
       return "bg-muted text-muted-foreground";
     default:
       return "";
   }
 };
 
+const typeLabels: Record<Document["type"], string> = {
+  procedure: "Procedure",
+  policy: "Policy",
+  form: "Form",
+  work_instruction: "Work Instruction",
+  manual: "Manual",
+};
+
+const statusLabels: Record<Document["status"], string> = {
+  current: "Current",
+  under_review: "Under Review",
+  draft: "Draft",
+  obsolete: "Obsolete",
+};
+
 const Documents = () => {
+  const { documents, loading, createDocument, updateDocument, deleteDocument } = useDocuments();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedType, setSelectedType] = useState<string>("all");
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
+  
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const filteredDocs = documents.filter((doc) => {
     const matchesSearch =
       doc.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      doc.number.toLowerCase().includes(searchQuery.toLowerCase());
+      (doc.document_number?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false);
     const matchesType = selectedType === "all" || doc.type === selectedType;
     const matchesStatus = selectedStatus === "all" || doc.status === selectedStatus;
     return matchesSearch && matchesType && matchesStatus;
   });
+
+  const handleCreate = () => {
+    setSelectedDocument(null);
+    setIsFormOpen(true);
+  };
+
+  const handleEdit = (doc: Document) => {
+    setSelectedDocument(doc);
+    setIsFormOpen(true);
+  };
+
+  const handleDelete = (doc: Document) => {
+    setSelectedDocument(doc);
+    setIsDeleteOpen(true);
+  };
+
+  const handleFormSubmit = async (values: any) => {
+    setIsSubmitting(true);
+    try {
+      if (selectedDocument) {
+        await updateDocument(selectedDocument.id, values);
+      } else {
+        await createDocument(values);
+      }
+      setIsFormOpen(false);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!selectedDocument) return;
+    setIsSubmitting(true);
+    try {
+      await deleteDocument(selectedDocument.id);
+      setIsDeleteOpen(false);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -162,7 +147,7 @@ const Documents = () => {
             Manage your ISO documents with version control and approval workflows
           </p>
         </div>
-        <Button variant="gradient">
+        <Button variant="gradient" onClick={handleCreate}>
           <Plus className="w-4 h-4" />
           New Document
         </Button>
@@ -191,9 +176,9 @@ const Documents = () => {
               <option value="all">All Types</option>
               <option value="policy">Policy</option>
               <option value="procedure">Procedure</option>
-              <option value="work-instruction">Work Instruction</option>
+              <option value="work_instruction">Work Instruction</option>
               <option value="form">Form</option>
-              <option value="record">Record</option>
+              <option value="manual">Manual</option>
             </select>
             <select
               value={selectedStatus}
@@ -202,8 +187,8 @@ const Documents = () => {
             >
               <option value="all">All Status</option>
               <option value="draft">Draft</option>
-              <option value="in-review">In Review</option>
-              <option value="approved">Approved</option>
+              <option value="under_review">Under Review</option>
+              <option value="current">Current</option>
               <option value="obsolete">Obsolete</option>
             </select>
           </div>
@@ -229,9 +214,6 @@ const Documents = () => {
                   Status
                 </th>
                 <th className="text-left p-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                  Owner
-                </th>
-                <th className="text-left p-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                   Clause
                 </th>
                 <th className="text-left p-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
@@ -243,67 +225,106 @@ const Documents = () => {
               </tr>
             </thead>
             <tbody>
-              {filteredDocs.map((doc) => {
-                const StatusIcon = getStatusIcon(doc.status);
-                return (
-                  <tr key={doc.id} className="table-row">
-                    <td className="p-4">
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 rounded-lg bg-secondary">
-                          <FileText className="w-4 h-4 text-primary" />
+              {filteredDocs.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="p-8 text-center text-muted-foreground">
+                    {documents.length === 0
+                      ? "No documents yet. Click 'New Document' to create one."
+                      : "No documents match your filters."}
+                  </td>
+                </tr>
+              ) : (
+                filteredDocs.map((doc) => {
+                  const StatusIcon = getStatusIcon(doc.status);
+                  return (
+                    <tr key={doc.id} className="table-row">
+                      <td className="p-4">
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 rounded-lg bg-secondary">
+                            <FileText className="w-4 h-4 text-primary" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-foreground">{doc.title}</p>
+                            {doc.document_number && (
+                              <p className="text-xs text-muted-foreground">{doc.document_number}</p>
+                            )}
+                          </div>
                         </div>
-                        <div>
-                          <p className="text-sm font-medium text-foreground">{doc.title}</p>
-                          <p className="text-xs text-muted-foreground">{doc.number}</p>
+                      </td>
+                      <td className="p-4">
+                        <span className={cn("status-badge", getTypeStyle(doc.type))}>
+                          {typeLabels[doc.type]}
+                        </span>
+                      </td>
+                      <td className="p-4">
+                        <span className="text-sm font-medium text-foreground">
+                          v{doc.version || "1.0"}
+                        </span>
+                      </td>
+                      <td className="p-4">
+                        <span className={cn("status-badge flex items-center gap-1.5", getStatusStyle(doc.status))}>
+                          <StatusIcon className="w-3 h-3" />
+                          {statusLabels[doc.status]}
+                        </span>
+                      </td>
+                      <td className="p-4">
+                        <span className="text-sm text-primary font-medium">
+                          {doc.clause || "-"}
+                        </span>
+                      </td>
+                      <td className="p-4">
+                        <span className="text-sm text-muted-foreground">
+                          {doc.updated_at
+                            ? format(new Date(doc.updated_at), "MMM dd, yyyy")
+                            : "-"}
+                        </span>
+                      </td>
+                      <td className="p-4">
+                        <div className="flex items-center justify-end gap-2">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => handleEdit(doc)}
+                          >
+                            <Edit className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-destructive hover:text-destructive"
+                            onClick={() => handleDelete(doc)}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
                         </div>
-                      </div>
-                    </td>
-                    <td className="p-4">
-                      <span className={cn("status-badge capitalize", getTypeStyle(doc.type))}>
-                        {doc.type.replace("-", " ")}
-                      </span>
-                    </td>
-                    <td className="p-4">
-                      <span className="text-sm font-medium text-foreground">v{doc.version}</span>
-                    </td>
-                    <td className="p-4">
-                      <span className={cn("status-badge capitalize flex items-center gap-1.5", getStatusStyle(doc.status))}>
-                        <StatusIcon className="w-3 h-3" />
-                        {doc.status.replace("-", " ")}
-                      </span>
-                    </td>
-                    <td className="p-4">
-                      <span className="text-sm text-muted-foreground">{doc.owner}</span>
-                    </td>
-                    <td className="p-4">
-                      <span className="text-sm text-primary font-medium">{doc.clause}</span>
-                    </td>
-                    <td className="p-4">
-                      <span className="text-sm text-muted-foreground">{doc.lastUpdated}</span>
-                    </td>
-                    <td className="p-4">
-                      <div className="flex items-center justify-end gap-2">
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                          <Eye className="w-4 h-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                          <Download className="w-4 h-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                          <Edit className="w-4 h-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive">
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
             </tbody>
           </table>
         </div>
       </div>
+
+      {/* Form Dialog */}
+      <DocumentFormDialog
+        open={isFormOpen}
+        onOpenChange={setIsFormOpen}
+        document={selectedDocument}
+        onSubmit={handleFormSubmit}
+        isSubmitting={isSubmitting}
+      />
+
+      {/* Delete Dialog */}
+      <DeleteDocumentDialog
+        open={isDeleteOpen}
+        onOpenChange={setIsDeleteOpen}
+        document={selectedDocument}
+        onConfirm={handleDeleteConfirm}
+        isDeleting={isSubmitting}
+      />
     </div>
   );
 };
