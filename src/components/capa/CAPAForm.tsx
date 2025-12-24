@@ -27,69 +27,41 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
-import { CalendarIcon, Upload, X, FileText, Image, File } from "lucide-react";
-import { toast } from "@/hooks/use-toast";
+import { CalendarIcon } from "lucide-react";
 
 const capaFormSchema = z.object({
   title: z.string().min(5, "Title must be at least 5 characters").max(200, "Title must be less than 200 characters"),
   type: z.enum(["Corrective", "Preventive"], { required_error: "Please select a type" }),
-  source: z.string().min(1, "Source reference is required").max(50, "Source must be less than 50 characters"),
+  source: z.string().max(50, "Source must be less than 50 characters").optional(),
   sourceType: z.enum(["Nonconformity", "Audit Finding", "Risk Assessment", "Customer Complaint", "Management Review", "Other"], { required_error: "Please select a source type" }),
-  priority: z.enum(["High", "Medium", "Low"], { required_error: "Please select a priority" }),
-  owner: z.string().min(2, "Owner name is required").max(100, "Owner name must be less than 100 characters"),
-  department: z.string().min(1, "Department is required").max(50, "Department must be less than 50 characters"),
+  priority: z.enum(["Critical", "High", "Medium", "Low"], { required_error: "Please select a priority" }),
+  owner: z.string().max(100, "Owner name must be less than 100 characters").optional(),
+  department: z.string().max(50, "Department must be less than 50 characters").optional(),
   dueDate: z.date({ required_error: "Due date is required" }),
-  rootCause: z.string().min(10, "Root cause must be at least 10 characters").max(500, "Root cause must be less than 500 characters"),
-  description: z.string().min(20, "Description must be at least 20 characters").max(2000, "Description must be less than 2000 characters"),
+  rootCause: z.string().max(500, "Root cause must be less than 500 characters").optional(),
+  description: z.string().max(2000, "Description must be less than 2000 characters").optional(),
   verificationRequired: z.boolean().default(true),
 });
 
 export type CAPAFormValues = z.infer<typeof capaFormSchema>;
 
-interface Evidence {
-  id: string;
-  name: string;
-  size: number;
-  type: string;
-  uploadedAt: Date;
-}
-
 interface CAPAFormProps {
   defaultValues?: Partial<CAPAFormValues>;
-  existingEvidence?: Evidence[];
-  onSubmit: (data: CAPAFormValues, evidence: Evidence[]) => void;
+  onSubmit: (data: CAPAFormValues) => void;
   onCancel: () => void;
   isEditing?: boolean;
+  isSubmitting?: boolean;
 }
-
-const getFileIcon = (type: string) => {
-  if (type.startsWith("image/")) return <Image className="h-4 w-4 text-primary" />;
-  if (type.includes("pdf")) return <FileText className="h-4 w-4 text-destructive" />;
-  return <File className="h-4 w-4 text-muted-foreground" />;
-};
-
-const formatFileSize = (bytes: number) => {
-  if (bytes === 0) return "0 Bytes";
-  const k = 1024;
-  const sizes = ["Bytes", "KB", "MB", "GB"];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
-};
 
 export default function CAPAForm({ 
   defaultValues, 
-  existingEvidence = [], 
   onSubmit, 
   onCancel, 
-  isEditing = false 
+  isEditing = false,
+  isSubmitting = false,
 }: CAPAFormProps) {
-  const [evidence, setEvidence] = useState<Evidence[]>(existingEvidence);
-  const [isDragging, setIsDragging] = useState(false);
-
   const form = useForm<CAPAFormValues>({
     resolver: zodResolver(capaFormSchema),
     defaultValues: {
@@ -107,73 +79,8 @@ export default function CAPAForm({
     },
   });
 
-  const handleFileUpload = (files: FileList | null) => {
-    if (!files) return;
-    
-    const maxSize = 10 * 1024 * 1024; // 10MB
-    const allowedTypes = ["image/jpeg", "image/png", "image/gif", "application/pdf", "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"];
-    
-    const newEvidence: Evidence[] = [];
-    
-    Array.from(files).forEach((file) => {
-      if (file.size > maxSize) {
-        toast({
-          title: "File too large",
-          description: `${file.name} exceeds the 10MB limit`,
-          variant: "destructive",
-        });
-        return;
-      }
-      
-      if (!allowedTypes.includes(file.type)) {
-        toast({
-          title: "Invalid file type",
-          description: `${file.name} is not a supported file type`,
-          variant: "destructive",
-        });
-        return;
-      }
-      
-      newEvidence.push({
-        id: crypto.randomUUID(),
-        name: file.name,
-        size: file.size,
-        type: file.type,
-        uploadedAt: new Date(),
-      });
-    });
-    
-    if (newEvidence.length > 0) {
-      setEvidence((prev) => [...prev, ...newEvidence]);
-      toast({
-        title: "Files uploaded",
-        description: `${newEvidence.length} file(s) added as evidence`,
-      });
-    }
-  };
-
-  const removeEvidence = (id: string) => {
-    setEvidence((prev) => prev.filter((e) => e.id !== id));
-  };
-
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(true);
-  };
-
-  const handleDragLeave = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-    handleFileUpload(e.dataTransfer.files);
-  };
-
   const handleSubmit = (data: CAPAFormValues) => {
-    onSubmit(data, evidence);
+    onSubmit(data);
   };
 
   return (
@@ -206,7 +113,7 @@ export default function CAPAForm({
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Action Type</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <Select onValueChange={field.onChange} value={field.value}>
                   <FormControl>
                     <SelectTrigger className="bg-secondary/50 border-border">
                       <SelectValue placeholder="Select type" />
@@ -230,13 +137,14 @@ export default function CAPAForm({
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Priority Level</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <Select onValueChange={field.onChange} value={field.value}>
                   <FormControl>
                     <SelectTrigger className="bg-secondary/50 border-border">
                       <SelectValue placeholder="Select priority" />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
+                    <SelectItem value="Critical">Critical</SelectItem>
                     <SelectItem value="High">High</SelectItem>
                     <SelectItem value="Medium">Medium</SelectItem>
                     <SelectItem value="Low">Low</SelectItem>
@@ -273,7 +181,7 @@ export default function CAPAForm({
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Source Type</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <Select onValueChange={field.onChange} value={field.value}>
                   <FormControl>
                     <SelectTrigger className="bg-secondary/50 border-border">
                       <SelectValue placeholder="Select source type" />
@@ -288,25 +196,6 @@ export default function CAPAForm({
                     <SelectItem value="Other">Other</SelectItem>
                   </SelectContent>
                 </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          {/* Owner */}
-          <FormField
-            control={form.control}
-            name="owner"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Action Owner</FormLabel>
-                <FormControl>
-                  <Input 
-                    placeholder="Person responsible for this action" 
-                    className="bg-secondary/50 border-border"
-                    {...field} 
-                  />
-                </FormControl>
                 <FormMessage />
               </FormItem>
             )}
@@ -380,7 +269,7 @@ export default function CAPAForm({
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Verification Required</FormLabel>
-                <Select onValueChange={(v) => field.onChange(v === "true")} defaultValue={field.value ? "true" : "false"}>
+                <Select onValueChange={(v) => field.onChange(v === "true")} value={field.value ? "true" : "false"}>
                   <FormControl>
                     <SelectTrigger className="bg-secondary/50 border-border">
                       <SelectValue />
@@ -405,7 +294,7 @@ export default function CAPAForm({
                 <FormLabel>Root Cause Analysis</FormLabel>
                 <FormControl>
                   <Textarea 
-                    placeholder="Describe the identified root cause of the issue (use 5 Whys or Fishbone analysis)" 
+                    placeholder="Describe the identified root cause of the issue" 
                     className="bg-secondary/50 border-border min-h-[80px]"
                     {...field} 
                   />
@@ -424,7 +313,7 @@ export default function CAPAForm({
                 <FormLabel>Action Description</FormLabel>
                 <FormControl>
                   <Textarea 
-                    placeholder="Detailed description of the corrective/preventive action to be taken, including specific steps and expected outcomes" 
+                    placeholder="Detailed description of the corrective/preventive action to be taken" 
                     className="bg-secondary/50 border-border min-h-[120px]"
                     {...field} 
                   />
@@ -435,93 +324,13 @@ export default function CAPAForm({
           />
         </div>
 
-        {/* Evidence Upload Section */}
-        <div className="space-y-4">
-          <FormLabel>Supporting Evidence</FormLabel>
-          
-          {/* Drop Zone */}
-          <div
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
-            onDrop={handleDrop}
-            className={cn(
-              "border-2 border-dashed rounded-lg p-6 text-center transition-colors",
-              isDragging
-                ? "border-primary bg-primary/10"
-                : "border-border hover:border-primary/50 bg-secondary/30"
-            )}
-          >
-            <Upload className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
-            <p className="text-sm text-muted-foreground mb-2">
-              Drag and drop files here, or click to browse
-            </p>
-            <input
-              type="file"
-              id="evidence-upload"
-              multiple
-              accept=".jpg,.jpeg,.png,.gif,.pdf,.doc,.docx"
-              className="hidden"
-              onChange={(e) => handleFileUpload(e.target.files)}
-            />
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => document.getElementById("evidence-upload")?.click()}
-            >
-              Browse Files
-            </Button>
-            <p className="text-xs text-muted-foreground mt-2">
-              Supported: JPG, PNG, GIF, PDF, DOC, DOCX (max 10MB each)
-            </p>
-          </div>
-
-          {/* Uploaded Files List */}
-          {evidence.length > 0 && (
-            <Card className="bg-secondary/30 border-border">
-              <CardContent className="p-4">
-                <p className="text-sm font-medium text-foreground mb-3">
-                  Uploaded Evidence ({evidence.length} files)
-                </p>
-                <div className="space-y-2">
-                  {evidence.map((file) => (
-                    <div
-                      key={file.id}
-                      className="flex items-center justify-between p-2 rounded-lg bg-background/50 border border-border"
-                    >
-                      <div className="flex items-center gap-3">
-                        {getFileIcon(file.type)}
-                        <div>
-                          <p className="text-sm font-medium text-foreground">{file.name}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {formatFileSize(file.size)} • {format(file.uploadedAt, "MMM d, yyyy")}
-                          </p>
-                        </div>
-                      </div>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => removeEvidence(file.id)}
-                        className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-        </div>
-
         {/* Form Actions */}
         <div className="flex justify-end gap-3 pt-4 border-t border-border">
-          <Button type="button" variant="outline" onClick={onCancel}>
+          <Button type="button" variant="outline" onClick={onCancel} disabled={isSubmitting}>
             Cancel
           </Button>
-          <Button type="submit" className="gap-2">
-            {isEditing ? "Update CAPA" : "Create CAPA"}
+          <Button type="submit" disabled={isSubmitting}>
+            {isSubmitting ? "Saving..." : isEditing ? "Update CAPA" : "Create CAPA"}
           </Button>
         </div>
       </form>
