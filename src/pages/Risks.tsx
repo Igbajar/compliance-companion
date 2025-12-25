@@ -1,89 +1,11 @@
-import { useState } from "react";
-import { AlertTriangle, Plus, Search, Filter, Eye, Edit, Trash2 } from "lucide-react";
+import { useState, useEffect } from "react";
+import { AlertTriangle, Plus, Search, Filter, Eye, Edit, Trash2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-
-interface Risk {
-  id: string;
-  number: string;
-  title: string;
-  category: "strategic" | "operational" | "compliance" | "financial" | "security";
-  likelihood: 1 | 2 | 3 | 4 | 5;
-  impact: 1 | 2 | 3 | 4 | 5;
-  owner: string;
-  status: "open" | "mitigating" | "accepted" | "closed";
-  mitigation: string;
-  dueDate: string;
-  clause: string;
-}
-
-const risks: Risk[] = [
-  {
-    id: "1",
-    number: "RSK-001",
-    title: "Critical Supplier Failure",
-    category: "operational",
-    likelihood: 3,
-    impact: 5,
-    owner: "John Smith",
-    status: "mitigating",
-    mitigation: "Develop backup supplier list and qualification process",
-    dueDate: "2025-01-15",
-    clause: "8.4",
-  },
-  {
-    id: "2",
-    number: "RSK-002",
-    title: "Data Breach - Customer PII",
-    category: "security",
-    likelihood: 2,
-    impact: 5,
-    owner: "David Lee",
-    status: "mitigating",
-    mitigation: "Implement encryption and access controls",
-    dueDate: "2024-12-30",
-    clause: "A.8.24",
-  },
-  {
-    id: "3",
-    number: "RSK-003",
-    title: "Regulatory Non-Compliance",
-    category: "compliance",
-    likelihood: 2,
-    impact: 4,
-    owner: "Sarah Johnson",
-    status: "open",
-    mitigation: "Monthly compliance reviews and updates",
-    dueDate: "2025-02-01",
-    clause: "4.2",
-  },
-  {
-    id: "4",
-    number: "RSK-004",
-    title: "Key Staff Turnover",
-    category: "operational",
-    likelihood: 4,
-    impact: 3,
-    owner: "Emily Davis",
-    status: "accepted",
-    mitigation: "Cross-training program and succession planning",
-    dueDate: "2025-03-01",
-    clause: "7.2",
-  },
-  {
-    id: "5",
-    number: "RSK-005",
-    title: "Equipment Failure - Production Line",
-    category: "operational",
-    likelihood: 3,
-    impact: 4,
-    owner: "Mike Chen",
-    status: "mitigating",
-    mitigation: "Preventive maintenance schedule",
-    dueDate: "2025-01-10",
-    clause: "7.1.3",
-  },
-];
+import { useRisks, Risk } from "@/hooks/useRisks";
+import { RiskFormDialog } from "@/components/risks/RiskFormDialog";
+import { DeleteRiskDialog } from "@/components/risks/DeleteRiskDialog";
+import { useToast } from "@/hooks/use-toast";
 
 const getRiskScore = (likelihood: number, impact: number) => likelihood * impact;
 
@@ -119,7 +41,7 @@ const getCategoryStyle = (category: Risk["category"]) => {
       return "bg-warning/20 text-warning";
     case "financial":
       return "bg-success/20 text-success";
-    case "security":
+    case "technical":
       return "bg-destructive/20 text-destructive";
     default:
       return "";
@@ -130,15 +52,99 @@ const Risks = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
+  const [risks, setRisks] = useState<Risk[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [formOpen, setFormOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [selectedRisk, setSelectedRisk] = useState<Risk | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+
+  const { fetchRisks, createRisk, updateRisk, deleteRisk } = useRisks();
+  const { toast } = useToast();
+
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      const data = await fetchRisks();
+      setRisks(data);
+    } catch (error) {
+      toast({ title: "Error loading risks", variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const handleCreate = async (data: any) => {
+    try {
+      await createRisk(data);
+      toast({ title: "Risk created successfully" });
+      loadData();
+    } catch (error) {
+      toast({ title: "Error creating risk", variant: "destructive" });
+    }
+  };
+
+  const handleUpdate = async (data: any) => {
+    if (!selectedRisk) return;
+    try {
+      await updateRisk(selectedRisk.id, data);
+      toast({ title: "Risk updated successfully" });
+      loadData();
+    } catch (error) {
+      toast({ title: "Error updating risk", variant: "destructive" });
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!selectedRisk) return;
+    try {
+      await deleteRisk(selectedRisk.id);
+      toast({ title: "Risk deleted successfully" });
+      setDeleteOpen(false);
+      setSelectedRisk(null);
+      loadData();
+    } catch (error) {
+      toast({ title: "Error deleting risk", variant: "destructive" });
+    }
+  };
+
+  const openCreateForm = () => {
+    setSelectedRisk(null);
+    setIsEditing(false);
+    setFormOpen(true);
+  };
+
+  const openEditForm = (risk: Risk) => {
+    setSelectedRisk(risk);
+    setIsEditing(true);
+    setFormOpen(true);
+  };
+
+  const openDeleteDialog = (risk: Risk) => {
+    setSelectedRisk(risk);
+    setDeleteOpen(true);
+  };
 
   const filteredRisks = risks.filter((risk) => {
     const matchesSearch =
       risk.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      risk.number.toLowerCase().includes(searchQuery.toLowerCase());
+      (risk.risk_number?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false);
     const matchesCategory = selectedCategory === "all" || risk.category === selectedCategory;
     const matchesStatus = selectedStatus === "all" || risk.status === selectedStatus;
     return matchesSearch && matchesCategory && matchesStatus;
   });
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -150,7 +156,7 @@ const Risks = () => {
             Identify, assess, and manage organizational risks
           </p>
         </div>
-        <Button variant="gradient">
+        <Button variant="gradient" onClick={openCreateForm}>
           <Plus className="w-4 h-4" />
           New Risk
         </Button>
@@ -198,7 +204,7 @@ const Risks = () => {
               <option value="operational">Operational</option>
               <option value="compliance">Compliance</option>
               <option value="financial">Financial</option>
-              <option value="security">Security</option>
+              <option value="technical">Technical</option>
             </select>
             <select
               value={selectedStatus}
@@ -237,9 +243,6 @@ const Risks = () => {
                   Status
                 </th>
                 <th className="text-left p-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                  Owner
-                </th>
-                <th className="text-left p-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                   Due Date
                 </th>
                 <th className="text-right p-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
@@ -248,68 +251,90 @@ const Risks = () => {
               </tr>
             </thead>
             <tbody>
-              {filteredRisks.map((risk) => {
-                const score = getRiskScore(risk.likelihood, risk.impact);
-                const level = getRiskLevel(score);
-                return (
-                  <tr key={risk.id} className="table-row">
-                    <td className="p-4">
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 rounded-lg bg-secondary">
-                          <AlertTriangle className="w-4 h-4 text-warning" />
+              {filteredRisks.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="p-8 text-center text-muted-foreground">
+                    No risks found
+                  </td>
+                </tr>
+              ) : (
+                filteredRisks.map((risk) => {
+                  const score = getRiskScore(risk.likelihood, risk.impact);
+                  const level = getRiskLevel(score);
+                  return (
+                    <tr key={risk.id} className="table-row">
+                      <td className="p-4">
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 rounded-lg bg-secondary">
+                            <AlertTriangle className="w-4 h-4 text-warning" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-foreground">{risk.title}</p>
+                            {risk.risk_number && (
+                              <p className="text-xs text-muted-foreground">{risk.risk_number}</p>
+                            )}
+                          </div>
                         </div>
-                        <div>
-                          <p className="text-sm font-medium text-foreground">{risk.title}</p>
-                          <p className="text-xs text-muted-foreground">{risk.number}</p>
+                      </td>
+                      <td className="p-4">
+                        <span className={cn("status-badge capitalize", getCategoryStyle(risk.category))}>
+                          {risk.category}
+                        </span>
+                      </td>
+                      <td className="p-4 text-center">
+                        <span className="text-sm font-mono">
+                          {risk.likelihood} × {risk.impact} = <span className="font-bold">{score}</span>
+                        </span>
+                      </td>
+                      <td className="p-4">
+                        <span className={cn("status-badge", level.bg, level.color)}>
+                          {level.label}
+                        </span>
+                      </td>
+                      <td className="p-4">
+                        <span className={cn("status-badge capitalize", getStatusStyle(risk.status))}>
+                          {risk.status}
+                        </span>
+                      </td>
+                      <td className="p-4">
+                        <span className="text-sm text-muted-foreground">{risk.due_date || "-"}</span>
+                      </td>
+                      <td className="p-4">
+                        <div className="flex items-center justify-end gap-2">
+                          <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <Eye className="w-4 h-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditForm(risk)}>
+                            <Edit className="w-4 h-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => openDeleteDialog(risk)}>
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
                         </div>
-                      </div>
-                    </td>
-                    <td className="p-4">
-                      <span className={cn("status-badge capitalize", getCategoryStyle(risk.category))}>
-                        {risk.category}
-                      </span>
-                    </td>
-                    <td className="p-4 text-center">
-                      <span className="text-sm font-mono">
-                        {risk.likelihood} × {risk.impact} = <span className="font-bold">{score}</span>
-                      </span>
-                    </td>
-                    <td className="p-4">
-                      <span className={cn("status-badge", level.bg, level.color)}>
-                        {level.label}
-                      </span>
-                    </td>
-                    <td className="p-4">
-                      <span className={cn("status-badge capitalize", getStatusStyle(risk.status))}>
-                        {risk.status}
-                      </span>
-                    </td>
-                    <td className="p-4">
-                      <span className="text-sm text-muted-foreground">{risk.owner}</span>
-                    </td>
-                    <td className="p-4">
-                      <span className="text-sm text-muted-foreground">{risk.dueDate}</span>
-                    </td>
-                    <td className="p-4">
-                      <div className="flex items-center justify-end gap-2">
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                          <Eye className="w-4 h-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                          <Edit className="w-4 h-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive">
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
             </tbody>
           </table>
         </div>
       </div>
+
+      <RiskFormDialog
+        open={formOpen}
+        onOpenChange={setFormOpen}
+        onSubmit={isEditing ? handleUpdate : handleCreate}
+        defaultValues={selectedRisk || undefined}
+        isEditing={isEditing}
+      />
+
+      <DeleteRiskDialog
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+        onConfirm={handleDelete}
+        riskTitle={selectedRisk?.title || ""}
+      />
     </div>
   );
 };
