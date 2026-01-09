@@ -1,12 +1,23 @@
-import { FileText, AlertTriangle, ClipboardCheck, XCircle, CheckCircle2, Clock } from "lucide-react";
+import { FileText, AlertTriangle, ClipboardCheck, XCircle, CheckCircle2, Clock, Loader2 } from "lucide-react";
 import StatCard from "@/components/dashboard/StatCard";
 import ComplianceGauge from "@/components/dashboard/ComplianceGauge";
 import RecentActivity from "@/components/dashboard/RecentActivity";
 import UpcomingAudits from "@/components/dashboard/UpcomingAudits";
 import RiskMatrix from "@/components/dashboard/RiskMatrix";
 import NCTrend from "@/components/dashboard/NCTrend";
+import { useDashboardStats } from "@/hooks/useDashboardStats";
 
 const Dashboard = () => {
+  const { stats, loading } = useDashboardStats();
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Page Header */}
@@ -21,26 +32,26 @@ const Dashboard = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           title="Active Documents"
-          value="284"
-          change="+12 this month"
-          changeType="positive"
+          value={stats.activeDocuments.toString()}
+          change="Current status"
+          changeType="neutral"
           icon={FileText}
           iconColor="text-primary"
           delay={100}
         />
         <StatCard
           title="Open Risks"
-          value="18"
-          change="3 high priority"
-          changeType="negative"
+          value={stats.openRisks.toString()}
+          change={`${stats.highPriorityRisks} high priority`}
+          changeType={stats.highPriorityRisks > 0 ? "negative" : "neutral"}
           icon={AlertTriangle}
           iconColor="text-warning"
           delay={200}
         />
         <StatCard
           title="Pending Audits"
-          value="5"
-          change="2 this month"
+          value={stats.pendingAudits.toString()}
+          change={`${stats.auditsThisMonth} this month`}
           changeType="neutral"
           icon={ClipboardCheck}
           iconColor="text-info"
@@ -48,9 +59,9 @@ const Dashboard = () => {
         />
         <StatCard
           title="Open NCs"
-          value="7"
-          change="-4 vs last month"
-          changeType="positive"
+          value={stats.openNCs.toString()}
+          change={`${stats.closedThisMonth} closed this month`}
+          changeType={stats.closedThisMonth > 0 ? "positive" : "neutral"}
           icon={XCircle}
           iconColor="text-destructive"
           delay={400}
@@ -77,30 +88,30 @@ const Dashboard = () => {
             <div className="glass-card p-4 text-center fade-in" style={{ animationDelay: "300ms" }}>
               <div className="flex items-center justify-center gap-2 text-success mb-2">
                 <CheckCircle2 className="w-5 h-5" />
-                <span className="text-2xl font-bold">42</span>
+                <span className="text-2xl font-bold">{stats.closedThisMonth}</span>
               </div>
               <p className="text-xs text-muted-foreground">Closed This Month</p>
             </div>
             <div className="glass-card p-4 text-center fade-in" style={{ animationDelay: "350ms" }}>
               <div className="flex items-center justify-center gap-2 text-warning mb-2">
                 <Clock className="w-5 h-5" />
-                <span className="text-2xl font-bold">8</span>
+                <span className="text-2xl font-bold">{stats.openCAPAs}</span>
               </div>
-              <p className="text-xs text-muted-foreground">Pending Approvals</p>
+              <p className="text-xs text-muted-foreground">Open CAPAs</p>
             </div>
             <div className="glass-card p-4 text-center fade-in" style={{ animationDelay: "400ms" }}>
               <div className="flex items-center justify-center gap-2 text-info mb-2">
                 <FileText className="w-5 h-5" />
-                <span className="text-2xl font-bold">15</span>
+                <span className="text-2xl font-bold">{stats.activeDocuments}</span>
               </div>
-              <p className="text-xs text-muted-foreground">Docs for Review</p>
+              <p className="text-xs text-muted-foreground">Active Documents</p>
             </div>
             <div className="glass-card p-4 text-center fade-in" style={{ animationDelay: "450ms" }}>
               <div className="flex items-center justify-center gap-2 text-primary mb-2">
                 <ClipboardCheck className="w-5 h-5" />
-                <span className="text-2xl font-bold">3</span>
+                <span className="text-2xl font-bold">{stats.trainingDue}</span>
               </div>
-              <p className="text-xs text-muted-foreground">Training Due</p>
+              <p className="text-xs text-muted-foreground">Training Overdue</p>
             </div>
           </div>
 

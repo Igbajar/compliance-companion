@@ -1,7 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { useRealtimeSubscription } from "./useRealtimeSubscription";
 import type { Tables, TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
 
 export type Document = Tables<"documents">;
@@ -14,7 +15,7 @@ export const useDocuments = () => {
   const { toast } = useToast();
   const { user } = useAuth();
 
-  const fetchDocuments = async () => {
+  const fetchDocuments = useCallback(async () => {
     try {
       setLoading(true);
       const { data, error } = await supabase
@@ -33,7 +34,19 @@ export const useDocuments = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [toast]);
+
+  useEffect(() => {
+    fetchDocuments();
+  }, [fetchDocuments]);
+
+  // Realtime subscriptions
+  useRealtimeSubscription<Document>(
+    "documents",
+    (newDoc) => setDocuments((prev) => [newDoc, ...prev]),
+    (updatedDoc) => setDocuments((prev) => prev.map((d) => (d.id === updatedDoc.id ? updatedDoc : d))),
+    ({ id }) => setDocuments((prev) => prev.filter((d) => d.id !== id))
+  );
 
   const createDocument = async (document: Omit<DocumentInsert, "owner_id">) => {
     try {
@@ -45,7 +58,7 @@ export const useDocuments = () => {
 
       if (error) throw error;
       
-      setDocuments((prev) => [data, ...prev]);
+      // Realtime will handle state update
       toast({
         title: "Document created",
         description: "The document has been created successfully.",
@@ -72,9 +85,7 @@ export const useDocuments = () => {
 
       if (error) throw error;
       
-      setDocuments((prev) =>
-        prev.map((doc) => (doc.id === id ? data : doc))
-      );
+      // Realtime will handle state update
       toast({
         title: "Document updated",
         description: "The document has been updated successfully.",
@@ -99,7 +110,7 @@ export const useDocuments = () => {
 
       if (error) throw error;
       
-      setDocuments((prev) => prev.filter((doc) => doc.id !== id));
+      // Realtime will handle state update
       toast({
         title: "Document deleted",
         description: "The document has been deleted successfully.",
@@ -114,10 +125,6 @@ export const useDocuments = () => {
       return { error };
     }
   };
-
-  useEffect(() => {
-    fetchDocuments();
-  }, []);
 
   return {
     documents,
