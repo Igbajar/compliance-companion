@@ -1,7 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { useRealtimeSubscription } from "./useRealtimeSubscription";
 import type { Tables, TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
 
 export type CAPAAction = Tables<"capa_actions">;
@@ -14,7 +15,7 @@ export const useCapaActions = () => {
   const { toast } = useToast();
   const { user } = useAuth();
 
-  const fetchCapaActions = async () => {
+  const fetchCapaActions = useCallback(async () => {
     try {
       setLoading(true);
       const { data, error } = await supabase
@@ -33,7 +34,19 @@ export const useCapaActions = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [toast]);
+
+  useEffect(() => {
+    fetchCapaActions();
+  }, [fetchCapaActions]);
+
+  // Realtime subscriptions
+  useRealtimeSubscription<CAPAAction>(
+    "capa_actions",
+    (newCapa) => setCapaActions((prev) => [newCapa, ...prev]),
+    (updatedCapa) => setCapaActions((prev) => prev.map((c) => (c.id === updatedCapa.id ? updatedCapa : c))),
+    ({ id }) => setCapaActions((prev) => prev.filter((c) => c.id !== id))
+  );
 
   const createCapaAction = async (capaAction: Omit<CAPAActionInsert, "owner_id">) => {
     try {
@@ -45,7 +58,6 @@ export const useCapaActions = () => {
 
       if (error) throw error;
       
-      setCapaActions((prev) => [data, ...prev]);
       toast({
         title: "CAPA created",
         description: "The CAPA action has been created successfully.",
@@ -72,9 +84,6 @@ export const useCapaActions = () => {
 
       if (error) throw error;
       
-      setCapaActions((prev) =>
-        prev.map((capa) => (capa.id === id ? data : capa))
-      );
       toast({
         title: "CAPA updated",
         description: "The CAPA action has been updated successfully.",
@@ -99,7 +108,6 @@ export const useCapaActions = () => {
 
       if (error) throw error;
       
-      setCapaActions((prev) => prev.filter((capa) => capa.id !== id));
       toast({
         title: "CAPA deleted",
         description: "The CAPA action has been deleted successfully.",
@@ -114,10 +122,6 @@ export const useCapaActions = () => {
       return { error };
     }
   };
-
-  useEffect(() => {
-    fetchCapaActions();
-  }, []);
 
   return {
     capaActions,
