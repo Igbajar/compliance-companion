@@ -24,6 +24,7 @@ export type Database = {
           lead_auditor_id: string | null
           major_findings: number | null
           minor_findings: number | null
+          report_url: string | null
           scope: string | null
           start_date: string | null
           status: Database["public"]["Enums"]["audit_status"]
@@ -40,6 +41,7 @@ export type Database = {
           lead_auditor_id?: string | null
           major_findings?: number | null
           minor_findings?: number | null
+          report_url?: string | null
           scope?: string | null
           start_date?: string | null
           status?: Database["public"]["Enums"]["audit_status"]
@@ -56,6 +58,7 @@ export type Database = {
           lead_auditor_id?: string | null
           major_findings?: number | null
           minor_findings?: number | null
+          report_url?: string | null
           scope?: string | null
           start_date?: string | null
           status?: Database["public"]["Enums"]["audit_status"]
@@ -225,6 +228,57 @@ export type Database = {
         }
         Relationships: []
       }
+      employees: {
+        Row: {
+          certifications: string[] | null
+          created_at: string | null
+          department: string | null
+          email: string
+          employee_number: string | null
+          full_name: string
+          hire_date: string | null
+          id: string
+          job_title: string | null
+          phone: string | null
+          skills: string[] | null
+          status: string | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          certifications?: string[] | null
+          created_at?: string | null
+          department?: string | null
+          email: string
+          employee_number?: string | null
+          full_name: string
+          hire_date?: string | null
+          id?: string
+          job_title?: string | null
+          phone?: string | null
+          skills?: string[] | null
+          status?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          certifications?: string[] | null
+          created_at?: string | null
+          department?: string | null
+          email?: string
+          employee_number?: string | null
+          full_name?: string
+          hire_date?: string | null
+          id?: string
+          job_title?: string | null
+          phone?: string | null
+          skills?: string[] | null
+          status?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       iso_clauses: {
         Row: {
           clause_number: string
@@ -333,6 +387,7 @@ export type Database = {
           department: string | null
           description: string | null
           due_date: string | null
+          evidence_url: string | null
           id: string
           nc_number: string | null
           owner_id: string | null
@@ -351,6 +406,7 @@ export type Database = {
           department?: string | null
           description?: string | null
           due_date?: string | null
+          evidence_url?: string | null
           id?: string
           nc_number?: string | null
           owner_id?: string | null
@@ -369,6 +425,7 @@ export type Database = {
           department?: string | null
           description?: string | null
           due_date?: string | null
+          evidence_url?: string | null
           id?: string
           nc_number?: string | null
           owner_id?: string | null
@@ -691,6 +748,7 @@ export type Database = {
           course_id: string
           created_at: string | null
           due_date: string | null
+          employee_id: string | null
           id: string
           progress: number | null
           score: number | null
@@ -704,6 +762,7 @@ export type Database = {
           course_id: string
           created_at?: string | null
           due_date?: string | null
+          employee_id?: string | null
           id?: string
           progress?: number | null
           score?: number | null
@@ -717,6 +776,7 @@ export type Database = {
           course_id?: string
           created_at?: string | null
           due_date?: string | null
+          employee_id?: string | null
           id?: string
           progress?: number | null
           score?: number | null
@@ -730,6 +790,13 @@ export type Database = {
             columns: ["course_id"]
             isOneToOne: false
             referencedRelation: "training_courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "training_records_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
             referencedColumns: ["id"]
           },
         ]
