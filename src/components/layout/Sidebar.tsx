@@ -29,6 +29,7 @@ const navItems = [
   { icon: XCircle, label: "Nonconformities", path: "/nonconformities" },
   { icon: Shield, label: "CAPA", path: "/capa" },
   { icon: GraduationCap, label: "Training", path: "/training" },
+  { icon: Users, label: "Employees", path: "/employees" },
   { icon: BarChart3, label: "Reports", path: "/reports" },
   { icon: Users, label: "Management Review", path: "/management-review" },
 ];
