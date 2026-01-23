@@ -705,6 +705,45 @@ export type Database = {
         }
         Relationships: []
       }
+      smtp_settings: {
+        Row: {
+          created_at: string
+          from_email: string
+          from_name: string
+          host: string
+          id: string
+          password: string | null
+          port: number
+          updated_at: string
+          use_tls: boolean
+          username: string | null
+        }
+        Insert: {
+          created_at?: string
+          from_email: string
+          from_name?: string
+          host: string
+          id?: string
+          password?: string | null
+          port?: number
+          updated_at?: string
+          use_tls?: boolean
+          username?: string | null
+        }
+        Update: {
+          created_at?: string
+          from_email?: string
+          from_name?: string
+          host?: string
+          id?: string
+          password?: string | null
+          port?: number
+          updated_at?: string
+          use_tls?: boolean
+          username?: string | null
+        }
+        Relationships: []
+      }
       training_courses: {
         Row: {
           category: string | null
