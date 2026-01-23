@@ -18,6 +18,7 @@ import CAPA from "./pages/CAPA";
 import ManagementReview from "./pages/ManagementReview";
 import Reports from "./pages/Reports";
 import Employees from "./pages/Employees";
+import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -49,7 +50,7 @@ const App = () => (
             <Route path="/employees" element={<ProtectedPageWrapper><Employees /></ProtectedPageWrapper>} />
             <Route path="/reports" element={<ProtectedPageWrapper><Reports /></ProtectedPageWrapper>} />
             <Route path="/management-review" element={<ProtectedPageWrapper><ManagementReview /></ProtectedPageWrapper>} />
-            <Route path="/settings" element={<ProtectedPageWrapper><div className="text-foreground">Settings - Coming Soon</div></ProtectedPageWrapper>} />
+            <Route path="/settings" element={<ProtectedPageWrapper><Settings /></ProtectedPageWrapper>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

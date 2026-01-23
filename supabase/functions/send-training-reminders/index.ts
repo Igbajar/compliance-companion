@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.89.0";
-import { Resend } from "https://esm.sh/resend@2.0.0";
+import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -21,6 +21,16 @@ interface TrainingRecord {
   } | null;
 }
 
+interface SmtpSettings {
+  host: string;
+  port: number;
+  username: string | null;
+  password: string | null;
+  from_email: string;
+  from_name: string;
+  use_tls: boolean;
+}
+
 const handler = async (req: Request): Promise<Response> => {
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
@@ -28,16 +38,46 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const resendApiKey = Deno.env.get("RESEND_API_KEY");
-    if (!resendApiKey) {
-      throw new Error("RESEND_API_KEY is not configured");
-    }
-
-    const resend = new Resend(resendApiKey);
-
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Fetch SMTP settings from database
+    const { data: smtpSettings, error: smtpError } = await supabase
+      .from("smtp_settings")
+      .select("*")
+      .limit(1)
+      .maybeSingle();
+
+    if (smtpError) {
+      console.error("Error fetching SMTP settings:", smtpError);
+      throw new Error("Failed to fetch SMTP settings");
+    }
+
+    if (!smtpSettings) {
+      return new Response(
+        JSON.stringify({ error: "SMTP settings not configured. Please configure SMTP in Settings." }),
+        {
+          status: 400,
+          headers: { "Content-Type": "application/json", ...corsHeaders },
+        }
+      );
+    }
+
+    const settings = smtpSettings as SmtpSettings;
+
+    // Initialize SMTP client
+    const client = new SMTPClient({
+      connection: {
+        hostname: settings.host,
+        port: settings.port,
+        tls: settings.use_tls,
+        auth: settings.username && settings.password ? {
+          username: settings.username,
+          password: settings.password,
+        } : undefined,
+      },
+    });
 
     const today = new Date();
     const sevenDaysFromNow = new Date(today);
@@ -89,9 +129,9 @@ const handler = async (req: Request): Promise<Response> => {
       if (!record.employee?.email) continue;
 
       try {
-        await resend.emails.send({
-          from: "Training Alerts <onboarding@resend.dev>",
-          to: [record.employee.email],
+        await client.send({
+          from: `${settings.from_name} <${settings.from_email}>`,
+          to: record.employee.email,
           subject: `⚠️ Overdue Training: ${record.course?.title || "Training Course"}`,
           html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -103,13 +143,14 @@ const handler = async (req: Request): Promise<Response> => {
                 <p style="margin: 8px 0 0 0;"><strong>Due Date:</strong> ${new Date(record.due_date).toLocaleDateString()}</p>
               </div>
               <p>Please complete this training as soon as possible to maintain compliance.</p>
-              <p>Best regards,<br>Training Management System</p>
+              <p>Best regards,<br>${settings.from_name}</p>
             </div>
           `,
         });
         emailsSent.push(record.employee.email);
-      } catch (err: any) {
-        errors.push(`Failed to send to ${record.employee.email}: ${err.message}`);
+      } catch (err: unknown) {
+        const errorMessage = err instanceof Error ? err.message : String(err);
+        errors.push(`Failed to send to ${record.employee.email}: ${errorMessage}`);
       }
     }
 
@@ -122,9 +163,9 @@ const handler = async (req: Request): Promise<Response> => {
       );
 
       try {
-        await resend.emails.send({
-          from: "Training Alerts <onboarding@resend.dev>",
-          to: [record.employee.email],
+        await client.send({
+          from: `${settings.from_name} <${settings.from_email}>`,
+          to: record.employee.email,
           subject: `📅 Training Due Soon: ${record.course?.title || "Training Course"}`,
           html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -136,25 +177,28 @@ const handler = async (req: Request): Promise<Response> => {
                 <p style="margin: 8px 0 0 0;"><strong>Due Date:</strong> ${new Date(record.due_date).toLocaleDateString()}</p>
               </div>
               <p>Please complete this training before the due date to avoid it becoming overdue.</p>
-              <p>Best regards,<br>Training Management System</p>
+              <p>Best regards,<br>${settings.from_name}</p>
             </div>
           `,
         });
         emailsSent.push(record.employee.email);
-      } catch (err: any) {
-        errors.push(`Failed to send to ${record.employee.email}: ${err.message}`);
+      } catch (err: unknown) {
+        const errorMessage = err instanceof Error ? err.message : String(err);
+        errors.push(`Failed to send to ${record.employee.email}: ${errorMessage}`);
       }
     }
 
     // Update overdue records status
     if (overdueRecords && overdueRecords.length > 0) {
-      const overdueIds = overdueRecords.map((r: any) => r.id);
+      const overdueIds = overdueRecords.map((r: { id: string }) => r.id);
       await supabase
         .from("training_records")
         .update({ status: "overdue" })
         .in("id", overdueIds)
         .neq("status", "overdue");
     }
+
+    await client.close();
 
     return new Response(
       JSON.stringify({
@@ -169,10 +213,11 @@ const handler = async (req: Request): Promise<Response> => {
         headers: { "Content-Type": "application/json", ...corsHeaders },
       }
     );
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
     console.error("Error in send-training-reminders function:", error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: errorMessage }),
       {
         status: 500,
         headers: { "Content-Type": "application/json", ...corsHeaders },
