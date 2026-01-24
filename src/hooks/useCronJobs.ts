@@ -20,7 +20,8 @@ export function useCronJobs() {
   const { data: jobs, isLoading, error } = useQuery({
     queryKey: ["cron-jobs"],
     queryFn: async () => {
-      const { data, error } = await supabase.rpc("get_cron_jobs");
+      // Use type assertion since these functions are dynamically created
+      const { data, error } = await (supabase.rpc as any)("get_cron_jobs");
       if (error) throw error;
       return data as CronJob[];
     },
@@ -28,7 +29,7 @@ export function useCronJobs() {
 
   const toggleJob = useMutation({
     mutationFn: async ({ jobId, active }: { jobId: number; active: boolean }) => {
-      const { data, error } = await supabase.rpc("toggle_cron_job", {
+      const { data, error } = await (supabase.rpc as any)("toggle_cron_job", {
         job_id: jobId,
         is_active: active,
       });
@@ -46,7 +47,7 @@ export function useCronJobs() {
 
   const deleteJob = useMutation({
     mutationFn: async (jobId: number) => {
-      const { data, error } = await supabase.rpc("delete_cron_job", {
+      const { data, error } = await (supabase.rpc as any)("delete_cron_job", {
         job_id: jobId,
       });
       if (error) throw error;
