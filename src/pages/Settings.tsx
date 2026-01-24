@@ -5,9 +5,10 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Mail, Settings as SettingsIcon, Shield, Loader2, Send, Clock } from "lucide-react";
+import { Mail, Settings as SettingsIcon, Shield, Loader2, Send, Clock, History } from "lucide-react";
 import { useSmtpSettings } from "@/hooks/useSmtpSettings";
 import { CronJobsManager } from "@/components/settings/CronJobsManager";
+import { EmailHistoryTable } from "@/components/settings/EmailHistoryTable";
 
 export default function Settings() {
   const { settings, isLoading, saveSettings, testConnection } = useSmtpSettings();
@@ -62,10 +63,14 @@ export default function Settings() {
       </div>
 
       <Tabs defaultValue="email" className="space-y-4">
-        <TabsList>
+        <TabsList className="flex-wrap h-auto">
           <TabsTrigger value="email" className="flex items-center gap-2">
             <Mail className="h-4 w-4" />
             Email (SMTP)
+          </TabsTrigger>
+          <TabsTrigger value="email-history" className="flex items-center gap-2">
+            <History className="h-4 w-4" />
+            Email History
           </TabsTrigger>
           <TabsTrigger value="scheduled" className="flex items-center gap-2">
             <Clock className="h-4 w-4" />
@@ -185,6 +190,10 @@ export default function Settings() {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="email-history">
+          <EmailHistoryTable />
         </TabsContent>
 
         <TabsContent value="scheduled">
