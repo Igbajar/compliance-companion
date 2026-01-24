@@ -124,15 +124,43 @@ const handler = async (req: Request): Promise<Response> => {
     const emailsSent: string[] = [];
     const errors: string[] = [];
 
+    // Helper function to log email notification
+    async function logEmailNotification(
+      recipientEmail: string,
+      recipientName: string | null,
+      subject: string,
+      emailType: string,
+      status: "pending" | "sent" | "failed",
+      errorMessage?: string,
+      metadata?: Record<string, unknown>
+    ) {
+      try {
+        await supabase.from("email_notifications").insert({
+          recipient_email: recipientEmail,
+          recipient_name: recipientName,
+          subject: subject,
+          email_type: emailType,
+          status: status,
+          error_message: errorMessage || null,
+          metadata: metadata || null,
+          sent_at: status === "sent" ? new Date().toISOString() : null,
+        });
+      } catch (err) {
+        console.error("Failed to log email notification:", err);
+      }
+    }
+
     // Send overdue notifications
     for (const record of (overdueRecords as unknown as TrainingRecord[]) || []) {
       if (!record.employee?.email) continue;
 
+      const subject = `⚠️ Overdue Training: ${record.course?.title || "Training Course"}`;
+      
       try {
         await client.send({
           from: `${settings.from_name} <${settings.from_email}>`,
           to: record.employee.email,
-          subject: `⚠️ Overdue Training: ${record.course?.title || "Training Course"}`,
+          subject: subject,
           html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
               <h2 style="color: #dc2626;">Overdue Training Alert</h2>
@@ -148,9 +176,29 @@ const handler = async (req: Request): Promise<Response> => {
           `,
         });
         emailsSent.push(record.employee.email);
+        
+        await logEmailNotification(
+          record.employee.email,
+          record.employee.full_name,
+          subject,
+          "overdue_training",
+          "sent",
+          undefined,
+          { training_record_id: record.id, course_title: record.course?.title }
+        );
       } catch (err: unknown) {
         const errorMessage = err instanceof Error ? err.message : String(err);
         errors.push(`Failed to send to ${record.employee.email}: ${errorMessage}`);
+        
+        await logEmailNotification(
+          record.employee.email,
+          record.employee.full_name,
+          subject,
+          "overdue_training",
+          "failed",
+          errorMessage,
+          { training_record_id: record.id, course_title: record.course?.title }
+        );
       }
     }
 
@@ -162,11 +210,13 @@ const handler = async (req: Request): Promise<Response> => {
         (new Date(record.due_date).getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
       );
 
+      const subject = `📅 Training Due Soon: ${record.course?.title || "Training Course"}`;
+
       try {
         await client.send({
           from: `${settings.from_name} <${settings.from_email}>`,
           to: record.employee.email,
-          subject: `📅 Training Due Soon: ${record.course?.title || "Training Course"}`,
+          subject: subject,
           html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
               <h2 style="color: #f59e0b;">Training Due Soon</h2>
@@ -182,9 +232,29 @@ const handler = async (req: Request): Promise<Response> => {
           `,
         });
         emailsSent.push(record.employee.email);
+        
+        await logEmailNotification(
+          record.employee.email,
+          record.employee.full_name,
+          subject,
+          "expiring_training",
+          "sent",
+          undefined,
+          { training_record_id: record.id, course_title: record.course?.title, days_until_due: daysUntilDue }
+        );
       } catch (err: unknown) {
         const errorMessage = err instanceof Error ? err.message : String(err);
         errors.push(`Failed to send to ${record.employee.email}: ${errorMessage}`);
+        
+        await logEmailNotification(
+          record.employee.email,
+          record.employee.full_name,
+          subject,
+          "expiring_training",
+          "failed",
+          errorMessage,
+          { training_record_id: record.id, course_title: record.course?.title, days_until_due: daysUntilDue }
+        );
       }
     }
 

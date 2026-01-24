@@ -228,6 +228,45 @@ export type Database = {
         }
         Relationships: []
       }
+      email_notifications: {
+        Row: {
+          created_at: string
+          email_type: string
+          error_message: string | null
+          id: string
+          metadata: Json | null
+          recipient_email: string
+          recipient_name: string | null
+          sent_at: string | null
+          status: string
+          subject: string
+        }
+        Insert: {
+          created_at?: string
+          email_type: string
+          error_message?: string | null
+          id?: string
+          metadata?: Json | null
+          recipient_email: string
+          recipient_name?: string | null
+          sent_at?: string | null
+          status?: string
+          subject: string
+        }
+        Update: {
+          created_at?: string
+          email_type?: string
+          error_message?: string | null
+          id?: string
+          metadata?: Json | null
+          recipient_email?: string
+          recipient_name?: string | null
+          sent_at?: string | null
+          status?: string
+          subject?: string
+        }
+        Relationships: []
+      }
       employees: {
         Row: {
           certifications: string[] | null
@@ -898,6 +937,14 @@ export type Database = {
       }
     }
     Functions: {
+      create_cron_job: {
+        Args: {
+          p_function_name: string
+          p_job_name: string
+          p_schedule: string
+        }
+        Returns: number
+      }
       delete_cron_job: { Args: { job_id: number }; Returns: undefined }
       get_cron_jobs: {
         Args: never

@@ -3,8 +3,9 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Loader2, Play, Trash2, Clock, AlertCircle } from "lucide-react";
+import { Loader2, Play, Trash2, Clock, AlertCircle, Plus } from "lucide-react";
 import { useCronJobs } from "@/hooks/useCronJobs";
+import { CreateCronJobDialog } from "./CreateCronJobDialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -85,13 +86,23 @@ export function CronJobsManager() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Clock className="h-5 w-5" />
-          Scheduled Jobs
-        </CardTitle>
-        <CardDescription>
-          Manage automated tasks and scheduled functions. Jobs run automatically based on their schedule.
-        </CardDescription>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <Clock className="h-5 w-5" />
+              Scheduled Jobs
+            </CardTitle>
+            <CardDescription className="mt-1.5">
+              Manage automated tasks and scheduled functions. Jobs run automatically based on their schedule.
+            </CardDescription>
+          </div>
+          <CreateCronJobDialog>
+            <Button>
+              <Plus className="h-4 w-4 mr-2" />
+              Create Job
+            </Button>
+          </CreateCronJobDialog>
+        </div>
       </CardHeader>
       <CardContent>
         {!jobs || jobs.length === 0 ? (
