@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { RealtimePostgresChangesPayload } from "@supabase/supabase-js";
 
-type TableName = "documents" | "risks" | "audits" | "nonconformities" | "capa_actions" | "training_records" | "training_courses";
+type TableName = "documents" | "risks" | "audits" | "nonconformities" | "capa_actions" | "training_records" | "training_courses" | "clause_evidence" | "clause_document_links" | "iso_clauses";
 
 export const useRealtimeSubscription = <T extends Record<string, unknown>>(
   tableName: TableName,

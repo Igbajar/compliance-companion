@@ -5,10 +5,14 @@ import RecentActivity from "@/components/dashboard/RecentActivity";
 import UpcomingAudits from "@/components/dashboard/UpcomingAudits";
 import RiskMatrix from "@/components/dashboard/RiskMatrix";
 import NCTrend from "@/components/dashboard/NCTrend";
+import ClauseCoverageWidget from "@/components/clauses/ClauseCoverageWidget";
 import { useDashboardStats } from "@/hooks/useDashboardStats";
+import { useClauses } from "@/hooks/useClauses";
 
 const Dashboard = () => {
   const { stats, loading } = useDashboardStats();
+  const { getComplianceStats, loading: clausesLoading } = useClauses();
+  const clauseStats = getComplianceStats();
 
   if (loading) {
     return (
@@ -124,6 +128,7 @@ const Dashboard = () => {
 
         {/* Right Column */}
         <div className="space-y-6">
+          <ClauseCoverageWidget {...clauseStats} />
           <RecentActivity />
           <UpcomingAudits />
         </div>
