@@ -183,6 +183,89 @@ export type Database = {
           },
         ]
       }
+      clause_document_links: {
+        Row: {
+          clause_id: string
+          created_at: string
+          document_id: string
+          id: string
+          linked_by: string | null
+        }
+        Insert: {
+          clause_id: string
+          created_at?: string
+          document_id: string
+          id?: string
+          linked_by?: string | null
+        }
+        Update: {
+          clause_id?: string
+          created_at?: string
+          document_id?: string
+          id?: string
+          linked_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clause_document_links_clause_id_fkey"
+            columns: ["clause_id"]
+            isOneToOne: false
+            referencedRelation: "iso_clauses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clause_document_links_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      clause_evidence: {
+        Row: {
+          clause_id: string
+          created_at: string
+          description: string | null
+          file_name: string
+          file_size: number | null
+          file_type: string | null
+          file_url: string
+          id: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          clause_id: string
+          created_at?: string
+          description?: string | null
+          file_name: string
+          file_size?: number | null
+          file_type?: string | null
+          file_url: string
+          id?: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          clause_id?: string
+          created_at?: string
+          description?: string | null
+          file_name?: string
+          file_size?: number | null
+          file_type?: string | null
+          file_url?: string
+          id?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clause_evidence_clause_id_fkey"
+            columns: ["clause_id"]
+            isOneToOne: false
+            referencedRelation: "iso_clauses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       documents: {
         Row: {
           clause: string | null
