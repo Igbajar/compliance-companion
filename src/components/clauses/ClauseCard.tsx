@@ -9,6 +9,8 @@ import {
   FileText,
   Trash2,
   ExternalLink,
+  History,
+  Files,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -17,6 +19,11 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import type { ClauseWithDetails } from "@/hooks/useClauses";
 import type { Tables } from "@/integrations/supabase/types";
 import ClauseEvidenceUpload from "./ClauseEvidenceUpload";
@@ -26,9 +33,11 @@ interface ClauseCardProps {
   clause: ClauseWithDetails;
   allDocuments: Tables<"documents">[];
   onUploadEvidence: (clauseId: string, file: File, description?: string) => Promise<{ error: any }>;
-  onDeleteEvidence: (evidenceId: string) => Promise<{ error: any }>;
-  onLinkDocument: (clauseId: string, documentId: string) => Promise<{ error: any }>;
-  onUnlinkDocument: (linkId: string) => Promise<{ error: any }>;
+  onDeleteEvidence: (evidenceId: string, clauseId?: string, fileName?: string) => Promise<{ error: any }>;
+  onLinkDocument: (clauseId: string, documentId: string, documentTitle?: string) => Promise<{ error: any }>;
+  onUnlinkDocument: (linkId: string, clauseId?: string, documentTitle?: string) => Promise<{ error: any }>;
+  onOpenAuditTrail?: () => void;
+  onOpenBulkUpload?: () => void;
 }
 
 export default function ClauseCard({
@@ -38,6 +47,8 @@ export default function ClauseCard({
   onDeleteEvidence,
   onLinkDocument,
   onUnlinkDocument,
+  onOpenAuditTrail,
+  onOpenBulkUpload,
 }: ClauseCardProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [uploadOpen, setUploadOpen] = useState(false);
@@ -88,26 +99,66 @@ export default function ClauseCard({
                     {totalEvidence} evidence
                   </Badge>
                 )}
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setUploadOpen(true);
-                  }}
-                >
-                  <Upload className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setLinkerOpen(true);
-                  }}
-                >
-                  <Link2 className="h-4 w-4" />
-                </Button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onOpenBulkUpload?.();
+                      }}
+                    >
+                      <Files className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Bulk Upload</TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setUploadOpen(true);
+                      }}
+                    >
+                      <Upload className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Upload Evidence</TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setLinkerOpen(true);
+                      }}
+                    >
+                      <Link2 className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Link Document</TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onOpenAuditTrail?.();
+                      }}
+                    >
+                      <History className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>View History</TooltipContent>
+                </Tooltip>
               </div>
             </div>
           </CollapsibleTrigger>
@@ -146,7 +197,7 @@ export default function ClauseCard({
                             variant="ghost"
                             size="icon"
                             className="h-7 w-7 text-destructive hover:text-destructive"
-                            onClick={() => onUnlinkDocument(link.id)}
+                            onClick={() => onUnlinkDocument(link.id, clause.id, link.document?.title)}
                           >
                             <Trash2 className="h-3 w-3" />
                           </Button>
@@ -192,7 +243,7 @@ export default function ClauseCard({
                             variant="ghost"
                             size="icon"
                             className="h-7 w-7 text-destructive hover:text-destructive"
-                            onClick={() => onDeleteEvidence(ev.id)}
+                            onClick={() => onDeleteEvidence(ev.id, clause.id, ev.file_name)}
                           >
                             <Trash2 className="h-3 w-3" />
                           </Button>
