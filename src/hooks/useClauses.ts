@@ -5,6 +5,17 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useRealtimeSubscription } from "./useRealtimeSubscription";
 import type { Tables } from "@/integrations/supabase/types";
 
+// Audit trail type (table added via migration)
+export interface ClauseAuditTrail {
+  id: string;
+  clause_id: string;
+  action_type: 'evidence_added' | 'evidence_removed' | 'document_linked' | 'document_unlinked';
+  user_id: string | null;
+  user_email: string | null;
+  details: Record<string, unknown> | null;
+  created_at: string;
+}
+
 export type IsoClause = Tables<"iso_clauses">;
 export type ClauseEvidence = Tables<"clause_evidence">;
 export type ClauseDocumentLink = Tables<"clause_document_links">;
@@ -88,6 +99,25 @@ export const useClauses = () => {
     () => fetchClauses()
   );
 
+  // Log audit trail entry
+  const logAuditTrail = async (
+    clauseId: string,
+    actionType: 'evidence_added' | 'evidence_removed' | 'document_linked' | 'document_unlinked',
+    details: Record<string, unknown>
+  ) => {
+    try {
+      await supabase.from("clause_audit_trail" as any).insert({
+        clause_id: clauseId,
+        action_type: actionType,
+        user_id: user?.id,
+        user_email: user?.email,
+        details,
+      } as any);
+    } catch (error) {
+      console.error("Failed to log audit trail:", error);
+    }
+  };
+
   const uploadEvidence = async (
     clauseId: string,
     file: File,
@@ -95,7 +125,6 @@ export const useClauses = () => {
   ) => {
     try {
       // Upload file to storage
-      const fileExt = file.name.split(".").pop();
       const fileName = `${clauseId}/${Date.now()}-${file.name}`;
       
       const { error: uploadError } = await supabase.storage
@@ -123,6 +152,13 @@ export const useClauses = () => {
 
       if (insertError) throw insertError;
 
+      // Log audit trail
+      await logAuditTrail(clauseId, 'evidence_added', {
+        file_name: file.name,
+        file_size: file.size,
+        description,
+      });
+
       toast({
         title: "Evidence uploaded",
         description: "The evidence file has been attached to the clause.",
@@ -138,14 +174,73 @@ export const useClauses = () => {
     }
   };
 
-  const deleteEvidence = async (evidenceId: string) => {
+  // Bulk upload multiple files
+  const uploadMultipleEvidence = async (
+    clauseId: string,
+    files: File[],
+    description?: string
+  ): Promise<{ error: any; successCount: number; failCount: number }> => {
+    let successCount = 0;
+    let failCount = 0;
+
+    for (const file of files) {
+      const result = await uploadEvidence(clauseId, file, description);
+      if (result.error) {
+        failCount++;
+      } else {
+        successCount++;
+      }
+    }
+
+    if (successCount > 0 && failCount === 0) {
+      toast({
+        title: "All files uploaded",
+        description: `Successfully uploaded ${successCount} file(s).`,
+      });
+    } else if (successCount > 0 && failCount > 0) {
+      toast({
+        title: "Partial upload",
+        description: `Uploaded ${successCount} file(s), ${failCount} failed.`,
+        variant: "destructive",
+      });
+    }
+
+    return { error: failCount > 0 ? new Error("Some files failed to upload") : null, successCount, failCount };
+  };
+
+  const deleteEvidence = async (evidenceId: string, clauseId?: string, fileName?: string) => {
     try {
+      // Get evidence details before deletion if not provided
+      let evidenceClauseId = clauseId;
+      let evidenceFileName = fileName;
+      
+      if (!evidenceClauseId || !evidenceFileName) {
+        const { data: evidence } = await supabase
+          .from("clause_evidence")
+          .select("clause_id, file_name")
+          .eq("id", evidenceId)
+          .single();
+        
+        if (evidence) {
+          evidenceClauseId = evidence.clause_id;
+          evidenceFileName = evidence.file_name;
+        }
+      }
+
       const { error } = await supabase
         .from("clause_evidence")
         .delete()
         .eq("id", evidenceId);
 
       if (error) throw error;
+
+      // Log audit trail
+      if (evidenceClauseId) {
+        await logAuditTrail(evidenceClauseId, 'evidence_removed', {
+          evidence_id: evidenceId,
+          file_name: evidenceFileName,
+        });
+      }
 
       toast({
         title: "Evidence deleted",
@@ -162,7 +257,7 @@ export const useClauses = () => {
     }
   };
 
-  const linkDocument = async (clauseId: string, documentId: string) => {
+  const linkDocument = async (clauseId: string, documentId: string, documentTitle?: string) => {
     try {
       const { error } = await supabase
         .from("clause_document_links")
@@ -184,6 +279,12 @@ export const useClauses = () => {
         throw error;
       }
 
+      // Log audit trail
+      await logAuditTrail(clauseId, 'document_linked', {
+        document_id: documentId,
+        document_title: documentTitle,
+      });
+
       toast({
         title: "Document linked",
         description: "The document has been linked to the clause.",
@@ -199,14 +300,39 @@ export const useClauses = () => {
     }
   };
 
-  const unlinkDocument = async (linkId: string) => {
+  const unlinkDocument = async (linkId: string, clauseId?: string, documentTitle?: string) => {
     try {
+      // Get link details before deletion if not provided
+      let linkClauseId = clauseId;
+      let linkDocumentTitle = documentTitle;
+      
+      if (!linkClauseId) {
+        const { data: link } = await supabase
+          .from("clause_document_links")
+          .select("clause_id, document:documents(title)")
+          .eq("id", linkId)
+          .single();
+        
+        if (link) {
+          linkClauseId = link.clause_id;
+          linkDocumentTitle = (link.document as any)?.title;
+        }
+      }
+
       const { error } = await supabase
         .from("clause_document_links")
         .delete()
         .eq("id", linkId);
 
       if (error) throw error;
+
+      // Log audit trail
+      if (linkClauseId) {
+        await logAuditTrail(linkClauseId, 'document_unlinked', {
+          link_id: linkId,
+          document_title: linkDocumentTitle,
+        });
+      }
 
       toast({
         title: "Document unlinked",
@@ -220,6 +346,23 @@ export const useClauses = () => {
         variant: "destructive",
       });
       return { error };
+    }
+  };
+
+  // Fetch audit trail for a specific clause
+  const fetchAuditTrail = async (clauseId: string): Promise<ClauseAuditTrail[]> => {
+    try {
+      const { data, error } = await supabase
+        .from("clause_audit_trail" as any)
+        .select("*")
+        .eq("clause_id", clauseId)
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      return (data || []) as unknown as ClauseAuditTrail[];
+    } catch (error) {
+      console.error("Error fetching audit trail:", error);
+      return [];
     }
   };
 
@@ -244,9 +387,11 @@ export const useClauses = () => {
     loading,
     fetchClauses,
     uploadEvidence,
+    uploadMultipleEvidence,
     deleteEvidence,
     linkDocument,
     unlinkDocument,
     getComplianceStats,
+    fetchAuditTrail,
   };
 };

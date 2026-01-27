@@ -183,6 +183,44 @@ export type Database = {
           },
         ]
       }
+      clause_audit_trail: {
+        Row: {
+          action_type: string
+          clause_id: string
+          created_at: string
+          details: Json | null
+          id: string
+          user_email: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action_type: string
+          clause_id: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          user_email?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action_type?: string
+          clause_id?: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          user_email?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clause_audit_trail_clause_id_fkey"
+            columns: ["clause_id"]
+            isOneToOne: false
+            referencedRelation: "iso_clauses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clause_document_links: {
         Row: {
           clause_id: string
