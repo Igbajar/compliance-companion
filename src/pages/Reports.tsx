@@ -179,18 +179,28 @@ const Reports = () => {
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [selectedSections, setSelectedSections] = useState<string[]>([]);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  
+  const { generatePdfReport } = useComplianceReportData();
+  const { getComplianceStats, clauses, loading: clausesLoading } = useClauses();
+  const { stats: dashboardStats } = useDashboardStats();
+  const clauseStats = getComplianceStats();
 
-  const handleGenerateReport = (template: ReportTemplate) => {
+  const handleGenerateReport = async (template: ReportTemplate) => {
     setIsGenerating(true);
     setSelectedTemplate(template);
     
-    setTimeout(() => {
+    if (template.category === "compliance") {
+      await generatePdfReport();
       setIsGenerating(false);
-      toast({
-        title: "Report Generated",
-        description: `${template.name} has been generated successfully.`,
-      });
-    }, 2000);
+    } else {
+      setTimeout(() => {
+        setIsGenerating(false);
+        toast({
+          title: "Report Generated",
+          description: `${template.name} has been generated successfully.`,
+        });
+      }, 2000);
+    }
   };
 
   const handleExport = (report: GeneratedReport) => {
