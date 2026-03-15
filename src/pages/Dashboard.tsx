@@ -125,6 +125,9 @@ const Dashboard = () => {
 
           {/* NC Trend */}
           <NCTrend />
+
+          {/* Compliance Trends */}
+          <ComplianceTrends />
         </div>
 
         {/* Right Column */}
