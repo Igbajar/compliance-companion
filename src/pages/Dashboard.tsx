@@ -5,6 +5,7 @@ import RecentActivity from "@/components/dashboard/RecentActivity";
 import UpcomingAudits from "@/components/dashboard/UpcomingAudits";
 import RiskMatrix from "@/components/dashboard/RiskMatrix";
 import NCTrend from "@/components/dashboard/NCTrend";
+import ComplianceTrends from "@/components/dashboard/ComplianceTrends";
 import ClauseCoverageWidget from "@/components/clauses/ClauseCoverageWidget";
 import { useDashboardStats } from "@/hooks/useDashboardStats";
 import { useClauses } from "@/hooks/useClauses";
