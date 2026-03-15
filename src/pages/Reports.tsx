@@ -29,9 +29,13 @@ import {
   Filter,
   Search,
   Settings,
-  Mail
+  Mail,
+  Loader2
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { useComplianceReportData } from "@/hooks/useComplianceReportData";
+import { useClauses } from "@/hooks/useClauses";
+import { useDashboardStats } from "@/hooks/useDashboardStats";
 
 // Types
 interface ReportTemplate {
