@@ -304,6 +304,51 @@ export type Database = {
           },
         ]
       }
+      compliance_snapshots: {
+        Row: {
+          compliance_percentage: number
+          compliant_clauses: number
+          created_at: string
+          details: Json | null
+          id: string
+          non_compliant_clauses: number
+          open_capas: number
+          open_ncs: number
+          open_risks: number
+          snapshot_date: string
+          total_clauses: number
+          training_compliance_pct: number
+        }
+        Insert: {
+          compliance_percentage?: number
+          compliant_clauses?: number
+          created_at?: string
+          details?: Json | null
+          id?: string
+          non_compliant_clauses?: number
+          open_capas?: number
+          open_ncs?: number
+          open_risks?: number
+          snapshot_date?: string
+          total_clauses?: number
+          training_compliance_pct?: number
+        }
+        Update: {
+          compliance_percentage?: number
+          compliant_clauses?: number
+          created_at?: string
+          details?: Json | null
+          id?: string
+          non_compliant_clauses?: number
+          open_capas?: number
+          open_ncs?: number
+          open_risks?: number
+          snapshot_date?: string
+          total_clauses?: number
+          training_compliance_pct?: number
+        }
+        Relationships: []
+      }
       documents: {
         Row: {
           clause: string | null
