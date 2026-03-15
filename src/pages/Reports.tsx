@@ -734,34 +734,6 @@ const Reports = () => {
                   }) : (
                     <p className="text-sm text-muted-foreground">No clauses found. Add ISO clauses to see compliance data.</p>
                   )}
-            <CardContent className="p-6 space-y-6">
-              {/* Clause Compliance */}
-              <div>
-                <h3 className="text-lg font-semibold text-foreground mb-4">Clause Compliance Status</h3>
-                <div className="space-y-3">
-                  {complianceData.clauses.map(clause => (
-                    <div key={clause.id} className="flex items-center gap-4">
-                      <span className="text-sm text-muted-foreground w-8">{clause.id}</span>
-                      <span className="text-sm text-foreground flex-1">{clause.name}</span>
-                      <div className="w-48">
-                        <Progress 
-                          value={clause.compliance} 
-                          className={`h-2 ${
-                            clause.compliance >= 90 ? "[&>div]:bg-emerald-500" :
-                            clause.compliance >= 80 ? "[&>div]:bg-amber-500" :
-                            "[&>div]:bg-red-500"
-                          }`}
-                        />
-                      </div>
-                      <span className={`text-sm font-medium w-12 text-right ${
-                        clause.compliance >= 90 ? "text-emerald-400" :
-                        clause.compliance >= 80 ? "text-amber-400" :
-                        "text-red-400"
-                      }`}>
-                        {clause.compliance}%
-                      </span>
-                    </div>
-                  ))}
                 </div>
               </div>
 
@@ -769,54 +741,45 @@ const Reports = () => {
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div className="p-4 rounded-lg bg-secondary/30 border border-border/50">
                   <p className="text-sm text-muted-foreground">Open NCs</p>
-                  <p className="text-2xl font-bold text-foreground">{complianceData.nonconformities.open}</p>
-                  <p className="text-xs text-red-400">{complianceData.nonconformities.overdue} overdue</p>
+                  <p className="text-2xl font-bold text-foreground">{dashboardStats.openNCs}</p>
+                  <p className="text-xs text-destructive">{dashboardStats.closedThisMonth} closed this month</p>
                 </div>
                 <div className="p-4 rounded-lg bg-secondary/30 border border-border/50">
-                  <p className="text-sm text-muted-foreground">Audits Completed</p>
-                  <p className="text-2xl font-bold text-foreground">{complianceData.audits.completed}</p>
-                  <p className="text-xs text-muted-foreground">{complianceData.audits.scheduled} scheduled</p>
+                  <p className="text-sm text-muted-foreground">Pending Audits</p>
+                  <p className="text-2xl font-bold text-foreground">{dashboardStats.pendingAudits}</p>
+                  <p className="text-xs text-muted-foreground">{dashboardStats.auditsThisMonth} this month</p>
                 </div>
                 <div className="p-4 rounded-lg bg-secondary/30 border border-border/50">
                   <p className="text-sm text-muted-foreground">Open CAPAs</p>
-                  <p className="text-2xl font-bold text-foreground">{complianceData.capa.open}</p>
-                  <p className="text-xs text-emerald-400">{complianceData.capa.effective}% effective</p>
+                  <p className="text-2xl font-bold text-foreground">{dashboardStats.openCAPAs}</p>
                 </div>
                 <div className="p-4 rounded-lg bg-secondary/30 border border-border/50">
-                  <p className="text-sm text-muted-foreground">Training Compliance</p>
-                  <p className="text-2xl font-bold text-foreground">{complianceData.training.compliance}%</p>
-                  <p className="text-xs text-amber-400">{complianceData.training.overdue} overdue</p>
+                  <p className="text-sm text-muted-foreground">Training Overdue</p>
+                  <p className="text-2xl font-bold text-foreground">{dashboardStats.trainingDue}</p>
                 </div>
               </div>
 
               {/* Risk Summary */}
               <div>
-                <h3 className="text-lg font-semibold text-foreground mb-4">Risk Distribution</h3>
+                <h3 className="text-lg font-semibold text-foreground mb-4">Risk Overview</h3>
                 <div className="flex items-center gap-4">
                   <div className="flex-1 flex gap-1 h-8 rounded-lg overflow-hidden">
                     <div 
-                      className="bg-red-500 flex items-center justify-center text-white text-xs font-medium"
-                      style={{ width: `${(complianceData.risks.high / (complianceData.risks.high + complianceData.risks.medium + complianceData.risks.low)) * 100}%` }}
+                      className="bg-destructive flex items-center justify-center text-destructive-foreground text-xs font-medium"
+                      style={{ width: `${Math.max(10, (dashboardStats.highPriorityRisks / Math.max(1, dashboardStats.openRisks)) * 100)}%` }}
                     >
-                      {complianceData.risks.high}
+                      {dashboardStats.highPriorityRisks}
                     </div>
                     <div 
-                      className="bg-amber-500 flex items-center justify-center text-white text-xs font-medium"
-                      style={{ width: `${(complianceData.risks.medium / (complianceData.risks.high + complianceData.risks.medium + complianceData.risks.low)) * 100}%` }}
+                      className="bg-warning flex items-center justify-center text-warning-foreground text-xs font-medium"
+                      style={{ width: `${Math.max(10, ((dashboardStats.openRisks - dashboardStats.highPriorityRisks) / Math.max(1, dashboardStats.openRisks)) * 100)}%` }}
                     >
-                      {complianceData.risks.medium}
-                    </div>
-                    <div 
-                      className="bg-emerald-500 flex items-center justify-center text-white text-xs font-medium"
-                      style={{ width: `${(complianceData.risks.low / (complianceData.risks.high + complianceData.risks.medium + complianceData.risks.low)) * 100}%` }}
-                    >
-                      {complianceData.risks.low}
+                      {dashboardStats.openRisks - dashboardStats.highPriorityRisks}
                     </div>
                   </div>
                   <div className="flex gap-4 text-sm">
-                    <span className="flex items-center gap-1"><span className="h-3 w-3 rounded bg-red-500"></span> High</span>
-                    <span className="flex items-center gap-1"><span className="h-3 w-3 rounded bg-amber-500"></span> Medium</span>
-                    <span className="flex items-center gap-1"><span className="h-3 w-3 rounded bg-emerald-500"></span> Low</span>
+                    <span className="flex items-center gap-1"><span className="h-3 w-3 rounded bg-destructive"></span> High</span>
+                    <span className="flex items-center gap-1"><span className="h-3 w-3 rounded bg-warning"></span> Other</span>
                   </div>
                 </div>
               </div>
