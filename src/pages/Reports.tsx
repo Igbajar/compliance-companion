@@ -29,9 +29,13 @@ import {
   Filter,
   Search,
   Settings,
-  Mail
+  Mail,
+  Loader2
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { useComplianceReportData } from "@/hooks/useComplianceReportData";
+import { useClauses } from "@/hooks/useClauses";
+import { useDashboardStats } from "@/hooks/useDashboardStats";
 
 // Types
 interface ReportTemplate {
@@ -175,18 +179,28 @@ const Reports = () => {
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [selectedSections, setSelectedSections] = useState<string[]>([]);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  
+  const { generatePdfReport } = useComplianceReportData();
+  const { getComplianceStats, clauses, loading: clausesLoading } = useClauses();
+  const { stats: dashboardStats } = useDashboardStats();
+  const clauseStats = getComplianceStats();
 
-  const handleGenerateReport = (template: ReportTemplate) => {
+  const handleGenerateReport = async (template: ReportTemplate) => {
     setIsGenerating(true);
     setSelectedTemplate(template);
     
-    setTimeout(() => {
+    if (template.category === "compliance") {
+      await generatePdfReport();
       setIsGenerating(false);
-      toast({
-        title: "Report Generated",
-        description: `${template.name} has been generated successfully.`,
-      });
-    }, 2000);
+    } else {
+      setTimeout(() => {
+        setIsGenerating(false);
+        toast({
+          title: "Report Generated",
+          description: `${template.name} has been generated successfully.`,
+        });
+      }, 2000);
+    }
   };
 
   const handleExport = (report: GeneratedReport) => {
@@ -675,8 +689,8 @@ const Reports = () => {
                   <SelectItem value="csv">CSV</SelectItem>
                 </SelectContent>
               </Select>
-              <Button className="gap-2">
-                <Download className="h-4 w-4" /> Export
+              <Button className="gap-2" onClick={generatePdfReport}>
+                <Download className="h-4 w-4" /> Export PDF
               </Button>
             </div>
           </div>
@@ -692,8 +706,8 @@ const Reports = () => {
                   </p>
                 </div>
                 <div className="text-right">
-                  <p className="text-3xl font-bold text-foreground">{complianceData.overallScore}%</p>
-                  <p className="text-sm text-emerald-400">Overall Compliance</p>
+                  <p className="text-3xl font-bold text-foreground">{clauseStats.percentage}%</p>
+                  <p className="text-sm text-success">Overall Compliance</p>
                 </div>
               </div>
             </CardHeader>
@@ -702,29 +716,24 @@ const Reports = () => {
               <div>
                 <h3 className="text-lg font-semibold text-foreground mb-4">Clause Compliance Status</h3>
                 <div className="space-y-3">
-                  {complianceData.clauses.map(clause => (
-                    <div key={clause.id} className="flex items-center gap-4">
-                      <span className="text-sm text-muted-foreground w-8">{clause.id}</span>
-                      <span className="text-sm text-foreground flex-1">{clause.name}</span>
-                      <div className="w-48">
-                        <Progress 
-                          value={clause.compliance} 
-                          className={`h-2 ${
-                            clause.compliance >= 90 ? "[&>div]:bg-emerald-500" :
-                            clause.compliance >= 80 ? "[&>div]:bg-amber-500" :
-                            "[&>div]:bg-red-500"
-                          }`}
-                        />
+                  {clauses.length > 0 ? clauses.map(clause => {
+                    const isCompliant = clause.evidence.length > 0 || clause.linkedDocuments.length > 0;
+                    const pct = isCompliant ? 100 : 0;
+                    return (
+                      <div key={clause.id} className="flex items-center gap-4">
+                        <span className="text-sm text-muted-foreground w-12">{clause.clause_number}</span>
+                        <span className="text-sm text-foreground flex-1 truncate">{clause.title}</span>
+                        <div className="w-48">
+                          <Progress value={pct} className={`h-2 ${pct >= 90 ? "[&>div]:bg-success" : "[&>div]:bg-destructive"}`} />
+                        </div>
+                        <span className={`text-sm font-medium w-12 text-right ${isCompliant ? "text-success" : "text-destructive"}`}>
+                          {isCompliant ? "✓" : "Gap"}
+                        </span>
                       </div>
-                      <span className={`text-sm font-medium w-12 text-right ${
-                        clause.compliance >= 90 ? "text-emerald-400" :
-                        clause.compliance >= 80 ? "text-amber-400" :
-                        "text-red-400"
-                      }`}>
-                        {clause.compliance}%
-                      </span>
-                    </div>
-                  ))}
+                    );
+                  }) : (
+                    <p className="text-sm text-muted-foreground">No clauses found. Add ISO clauses to see compliance data.</p>
+                  )}
                 </div>
               </div>
 
@@ -732,54 +741,45 @@ const Reports = () => {
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div className="p-4 rounded-lg bg-secondary/30 border border-border/50">
                   <p className="text-sm text-muted-foreground">Open NCs</p>
-                  <p className="text-2xl font-bold text-foreground">{complianceData.nonconformities.open}</p>
-                  <p className="text-xs text-red-400">{complianceData.nonconformities.overdue} overdue</p>
+                  <p className="text-2xl font-bold text-foreground">{dashboardStats.openNCs}</p>
+                  <p className="text-xs text-destructive">{dashboardStats.closedThisMonth} closed this month</p>
                 </div>
                 <div className="p-4 rounded-lg bg-secondary/30 border border-border/50">
-                  <p className="text-sm text-muted-foreground">Audits Completed</p>
-                  <p className="text-2xl font-bold text-foreground">{complianceData.audits.completed}</p>
-                  <p className="text-xs text-muted-foreground">{complianceData.audits.scheduled} scheduled</p>
+                  <p className="text-sm text-muted-foreground">Pending Audits</p>
+                  <p className="text-2xl font-bold text-foreground">{dashboardStats.pendingAudits}</p>
+                  <p className="text-xs text-muted-foreground">{dashboardStats.auditsThisMonth} this month</p>
                 </div>
                 <div className="p-4 rounded-lg bg-secondary/30 border border-border/50">
                   <p className="text-sm text-muted-foreground">Open CAPAs</p>
-                  <p className="text-2xl font-bold text-foreground">{complianceData.capa.open}</p>
-                  <p className="text-xs text-emerald-400">{complianceData.capa.effective}% effective</p>
+                  <p className="text-2xl font-bold text-foreground">{dashboardStats.openCAPAs}</p>
                 </div>
                 <div className="p-4 rounded-lg bg-secondary/30 border border-border/50">
-                  <p className="text-sm text-muted-foreground">Training Compliance</p>
-                  <p className="text-2xl font-bold text-foreground">{complianceData.training.compliance}%</p>
-                  <p className="text-xs text-amber-400">{complianceData.training.overdue} overdue</p>
+                  <p className="text-sm text-muted-foreground">Training Overdue</p>
+                  <p className="text-2xl font-bold text-foreground">{dashboardStats.trainingDue}</p>
                 </div>
               </div>
 
               {/* Risk Summary */}
               <div>
-                <h3 className="text-lg font-semibold text-foreground mb-4">Risk Distribution</h3>
+                <h3 className="text-lg font-semibold text-foreground mb-4">Risk Overview</h3>
                 <div className="flex items-center gap-4">
                   <div className="flex-1 flex gap-1 h-8 rounded-lg overflow-hidden">
                     <div 
-                      className="bg-red-500 flex items-center justify-center text-white text-xs font-medium"
-                      style={{ width: `${(complianceData.risks.high / (complianceData.risks.high + complianceData.risks.medium + complianceData.risks.low)) * 100}%` }}
+                      className="bg-destructive flex items-center justify-center text-destructive-foreground text-xs font-medium"
+                      style={{ width: `${Math.max(10, (dashboardStats.highPriorityRisks / Math.max(1, dashboardStats.openRisks)) * 100)}%` }}
                     >
-                      {complianceData.risks.high}
+                      {dashboardStats.highPriorityRisks}
                     </div>
                     <div 
-                      className="bg-amber-500 flex items-center justify-center text-white text-xs font-medium"
-                      style={{ width: `${(complianceData.risks.medium / (complianceData.risks.high + complianceData.risks.medium + complianceData.risks.low)) * 100}%` }}
+                      className="bg-warning flex items-center justify-center text-warning-foreground text-xs font-medium"
+                      style={{ width: `${Math.max(10, ((dashboardStats.openRisks - dashboardStats.highPriorityRisks) / Math.max(1, dashboardStats.openRisks)) * 100)}%` }}
                     >
-                      {complianceData.risks.medium}
-                    </div>
-                    <div 
-                      className="bg-emerald-500 flex items-center justify-center text-white text-xs font-medium"
-                      style={{ width: `${(complianceData.risks.low / (complianceData.risks.high + complianceData.risks.medium + complianceData.risks.low)) * 100}%` }}
-                    >
-                      {complianceData.risks.low}
+                      {dashboardStats.openRisks - dashboardStats.highPriorityRisks}
                     </div>
                   </div>
                   <div className="flex gap-4 text-sm">
-                    <span className="flex items-center gap-1"><span className="h-3 w-3 rounded bg-red-500"></span> High</span>
-                    <span className="flex items-center gap-1"><span className="h-3 w-3 rounded bg-amber-500"></span> Medium</span>
-                    <span className="flex items-center gap-1"><span className="h-3 w-3 rounded bg-emerald-500"></span> Low</span>
+                    <span className="flex items-center gap-1"><span className="h-3 w-3 rounded bg-destructive"></span> High</span>
+                    <span className="flex items-center gap-1"><span className="h-3 w-3 rounded bg-warning"></span> Other</span>
                   </div>
                 </div>
               </div>
