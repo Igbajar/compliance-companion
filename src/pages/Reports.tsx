@@ -689,8 +689,8 @@ const Reports = () => {
                   <SelectItem value="csv">CSV</SelectItem>
                 </SelectContent>
               </Select>
-              <Button className="gap-2">
-                <Download className="h-4 w-4" /> Export
+              <Button className="gap-2" onClick={generatePdfReport}>
+                <Download className="h-4 w-4" /> Export PDF
               </Button>
             </div>
           </div>
@@ -706,11 +706,34 @@ const Reports = () => {
                   </p>
                 </div>
                 <div className="text-right">
-                  <p className="text-3xl font-bold text-foreground">{complianceData.overallScore}%</p>
-                  <p className="text-sm text-emerald-400">Overall Compliance</p>
+                  <p className="text-3xl font-bold text-foreground">{clauseStats.percentage}%</p>
+                  <p className="text-sm text-success">Overall Compliance</p>
                 </div>
               </div>
             </CardHeader>
+            <CardContent className="p-6 space-y-6">
+              {/* Clause Compliance */}
+              <div>
+                <h3 className="text-lg font-semibold text-foreground mb-4">Clause Compliance Status</h3>
+                <div className="space-y-3">
+                  {clauses.length > 0 ? clauses.map(clause => {
+                    const isCompliant = clause.evidence.length > 0 || clause.linkedDocuments.length > 0;
+                    const pct = isCompliant ? 100 : 0;
+                    return (
+                      <div key={clause.id} className="flex items-center gap-4">
+                        <span className="text-sm text-muted-foreground w-12">{clause.clause_number}</span>
+                        <span className="text-sm text-foreground flex-1 truncate">{clause.title}</span>
+                        <div className="w-48">
+                          <Progress value={pct} className={`h-2 ${pct >= 90 ? "[&>div]:bg-success" : "[&>div]:bg-destructive"}`} />
+                        </div>
+                        <span className={`text-sm font-medium w-12 text-right ${isCompliant ? "text-success" : "text-destructive"}`}>
+                          {isCompliant ? "✓" : "Gap"}
+                        </span>
+                      </div>
+                    );
+                  }) : (
+                    <p className="text-sm text-muted-foreground">No clauses found. Add ISO clauses to see compliance data.</p>
+                  )}
             <CardContent className="p-6 space-y-6">
               {/* Clause Compliance */}
               <div>
