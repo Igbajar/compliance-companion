@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { Search, Filter, BookOpen, Loader2 } from "lucide-react";
+import { Search, Filter, BookOpen, Loader2, SlidersHorizontal } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -9,6 +9,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Slider } from "@/components/ui/slider";
+import { Badge } from "@/components/ui/badge";
 import { useClauses, ClauseAuditTrail } from "@/hooks/useClauses";
 import { useDocuments } from "@/hooks/useDocuments";
 import ClauseCard from "@/components/clauses/ClauseCard";
@@ -32,7 +34,8 @@ const Clauses = () => {
 
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
-  
+  const [complianceThreshold, setComplianceThreshold] = useState<number>(0);
+  const [showThresholdFilter, setShowThresholdFilter] = useState(false);
   // Audit trail state
   const [auditTrailOpen, setAuditTrailOpen] = useState(false);
   const [auditTrailClause, setAuditTrailClause] = useState<{ id: string; title: string } | null>(null);
@@ -64,7 +67,7 @@ const Clauses = () => {
     });
   }, [clauses, searchQuery, statusFilter]);
 
-  // Group clauses by section
+  // Group clauses by section and compute section compliance
   const groupedClauses = useMemo(() => {
     const groups: Record<string, typeof filteredClauses> = {};
     filteredClauses.forEach((clause) => {
@@ -76,6 +79,20 @@ const Clauses = () => {
     });
     return groups;
   }, [filteredClauses]);
+
+  // Apply threshold filter at section level
+  const thresholdFilteredGroups = useMemo(() => {
+    if (complianceThreshold === 0) return groupedClauses;
+    const filtered: Record<string, typeof filteredClauses> = {};
+    for (const [section, sectionClauses] of Object.entries(groupedClauses)) {
+      const compliant = sectionClauses.filter(c => c.evidence.length > 0 || c.linkedDocuments.length > 0).length;
+      const pct = sectionClauses.length > 0 ? Math.round((compliant / sectionClauses.length) * 100) : 0;
+      if (pct < complianceThreshold) {
+        filtered[section] = sectionClauses;
+      }
+    }
+    return filtered;
+  }, [groupedClauses, complianceThreshold]);
 
   const handleOpenAuditTrail = async (clauseId: string, clauseTitle: string) => {
     setAuditTrailClause({ id: clauseId, title: clauseTitle });
@@ -139,11 +156,52 @@ const Clauses = () => {
             <SelectItem value="gap">Gaps (No Evidence)</SelectItem>
           </SelectContent>
         </Select>
+        <Button
+          variant={showThresholdFilter ? "secondary" : "outline"}
+          size="sm"
+          onClick={() => {
+            setShowThresholdFilter(!showThresholdFilter);
+            if (showThresholdFilter) setComplianceThreshold(0);
+          }}
+          className="gap-2"
+        >
+          <SlidersHorizontal className="h-4 w-4" />
+          Threshold
+          {complianceThreshold > 0 && (
+            <Badge variant="destructive" className="ml-1 text-xs px-1.5 py-0">
+              &lt;{complianceThreshold}%
+            </Badge>
+          )}
+        </Button>
       </div>
+
+      {/* Compliance Threshold Filter */}
+      {showThresholdFilter && (
+        <div className="flex items-center gap-4 p-4 rounded-lg border bg-card fade-in">
+          <span className="text-sm font-medium text-foreground whitespace-nowrap">
+            Show sections below:
+          </span>
+          <Slider
+            value={[complianceThreshold]}
+            onValueChange={([val]) => setComplianceThreshold(val)}
+            max={100}
+            step={5}
+            className="flex-1 max-w-xs"
+          />
+          <span className="text-sm font-semibold text-primary min-w-[3rem] text-right">
+            {complianceThreshold}%
+          </span>
+          {complianceThreshold > 0 && (
+            <span className="text-xs text-muted-foreground">
+              ({Object.keys(thresholdFilteredGroups).length} section{Object.keys(thresholdFilteredGroups).length !== 1 ? 's' : ''} shown)
+            </span>
+          )}
+        </div>
+      )}
 
       {/* Clause List */}
       <div className="space-y-6 fade-in" style={{ animationDelay: "200ms" }}>
-        {Object.entries(groupedClauses).map(([section, sectionClauses]) => (
+        {Object.entries(thresholdFilteredGroups).map(([section, sectionClauses]) => (
           <div key={section} className="space-y-3">
             <div className="flex items-center gap-2">
               <div className="p-1.5 rounded-md bg-primary/10">
@@ -174,11 +232,15 @@ const Clauses = () => {
           </div>
         ))}
 
-        {filteredClauses.length === 0 && (
+        {Object.keys(thresholdFilteredGroups).length === 0 && (
           <div className="text-center py-12 text-muted-foreground">
             <BookOpen className="h-12 w-12 mx-auto mb-4 opacity-50" />
             <p className="text-lg font-medium">No clauses found</p>
-            <p className="text-sm">Try adjusting your search or filter criteria</p>
+            <p className="text-sm">
+              {complianceThreshold > 0
+                ? `No sections found below ${complianceThreshold}% compliance`
+                : "Try adjusting your search or filter criteria"}
+            </p>
           </div>
         )}
       </div>
