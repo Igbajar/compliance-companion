@@ -34,7 +34,8 @@ const Clauses = () => {
 
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
-  
+  const [complianceThreshold, setComplianceThreshold] = useState<number>(0);
+  const [showThresholdFilter, setShowThresholdFilter] = useState(false);
   // Audit trail state
   const [auditTrailOpen, setAuditTrailOpen] = useState(false);
   const [auditTrailClause, setAuditTrailClause] = useState<{ id: string; title: string } | null>(null);
