@@ -210,6 +210,18 @@ const Clauses = () => {
               <h2 className="text-lg font-semibold text-foreground">
                 Section {section}
               </h2>
+              {(() => {
+                const compliant = sectionClauses.filter(c => c.evidence.length > 0 || c.linkedDocuments.length > 0).length;
+                const pct = sectionClauses.length > 0 ? Math.round((compliant / sectionClauses.length) * 100) : 0;
+                const color = pct >= 75 ? "bg-green-500/15 text-green-700 dark:text-green-400 border-green-500/30"
+                  : pct >= 40 ? "bg-yellow-500/15 text-yellow-700 dark:text-yellow-400 border-yellow-500/30"
+                  : "bg-red-500/15 text-red-700 dark:text-red-400 border-red-500/30";
+                return (
+                  <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${color}`}>
+                    {pct}%
+                  </span>
+                );
+              })()}
               <span className="text-sm text-muted-foreground">
                 ({sectionClauses.filter(c => c.evidence.length > 0 || c.linkedDocuments.length > 0).length}/{sectionClauses.length} compliant)
               </span>
