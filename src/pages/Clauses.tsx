@@ -9,6 +9,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Slider } from "@/components/ui/slider";
+import { Badge } from "@/components/ui/badge";
 import { useClauses, ClauseAuditTrail } from "@/hooks/useClauses";
 import { useDocuments } from "@/hooks/useDocuments";
 import ClauseCard from "@/components/clauses/ClauseCard";
