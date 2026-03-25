@@ -67,7 +67,7 @@ const Clauses = () => {
     });
   }, [clauses, searchQuery, statusFilter]);
 
-  // Group clauses by section
+  // Group clauses by section and compute section compliance
   const groupedClauses = useMemo(() => {
     const groups: Record<string, typeof filteredClauses> = {};
     filteredClauses.forEach((clause) => {
@@ -79,6 +79,20 @@ const Clauses = () => {
     });
     return groups;
   }, [filteredClauses]);
+
+  // Apply threshold filter at section level
+  const thresholdFilteredGroups = useMemo(() => {
+    if (complianceThreshold === 0) return groupedClauses;
+    const filtered: Record<string, typeof filteredClauses> = {};
+    for (const [section, sectionClauses] of Object.entries(groupedClauses)) {
+      const compliant = sectionClauses.filter(c => c.evidence.length > 0 || c.linkedDocuments.length > 0).length;
+      const pct = sectionClauses.length > 0 ? Math.round((compliant / sectionClauses.length) * 100) : 0;
+      if (pct < complianceThreshold) {
+        filtered[section] = sectionClauses;
+      }
+    }
+    return filtered;
+  }, [groupedClauses, complianceThreshold]);
 
   const handleOpenAuditTrail = async (clauseId: string, clauseTitle: string) => {
     setAuditTrailClause({ id: clauseId, title: clauseTitle });
