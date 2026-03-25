@@ -232,11 +232,15 @@ const Clauses = () => {
           </div>
         ))}
 
-        {filteredClauses.length === 0 && (
+        {Object.keys(thresholdFilteredGroups).length === 0 && (
           <div className="text-center py-12 text-muted-foreground">
             <BookOpen className="h-12 w-12 mx-auto mb-4 opacity-50" />
             <p className="text-lg font-medium">No clauses found</p>
-            <p className="text-sm">Try adjusting your search or filter criteria</p>
+            <p className="text-sm">
+              {complianceThreshold > 0
+                ? `No sections found below ${complianceThreshold}% compliance`
+                : "Try adjusting your search or filter criteria"}
+            </p>
           </div>
         )}
       </div>
