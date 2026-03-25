@@ -156,11 +156,52 @@ const Clauses = () => {
             <SelectItem value="gap">Gaps (No Evidence)</SelectItem>
           </SelectContent>
         </Select>
+        <Button
+          variant={showThresholdFilter ? "secondary" : "outline"}
+          size="sm"
+          onClick={() => {
+            setShowThresholdFilter(!showThresholdFilter);
+            if (showThresholdFilter) setComplianceThreshold(0);
+          }}
+          className="gap-2"
+        >
+          <SlidersHorizontal className="h-4 w-4" />
+          Threshold
+          {complianceThreshold > 0 && (
+            <Badge variant="destructive" className="ml-1 text-xs px-1.5 py-0">
+              &lt;{complianceThreshold}%
+            </Badge>
+          )}
+        </Button>
       </div>
+
+      {/* Compliance Threshold Filter */}
+      {showThresholdFilter && (
+        <div className="flex items-center gap-4 p-4 rounded-lg border bg-card fade-in">
+          <span className="text-sm font-medium text-foreground whitespace-nowrap">
+            Show sections below:
+          </span>
+          <Slider
+            value={[complianceThreshold]}
+            onValueChange={([val]) => setComplianceThreshold(val)}
+            max={100}
+            step={5}
+            className="flex-1 max-w-xs"
+          />
+          <span className="text-sm font-semibold text-primary min-w-[3rem] text-right">
+            {complianceThreshold}%
+          </span>
+          {complianceThreshold > 0 && (
+            <span className="text-xs text-muted-foreground">
+              ({Object.keys(thresholdFilteredGroups).length} section{Object.keys(thresholdFilteredGroups).length !== 1 ? 's' : ''} shown)
+            </span>
+          )}
+        </div>
+      )}
 
       {/* Clause List */}
       <div className="space-y-6 fade-in" style={{ animationDelay: "200ms" }}>
-        {Object.entries(groupedClauses).map(([section, sectionClauses]) => (
+        {Object.entries(thresholdFilteredGroups).map(([section, sectionClauses]) => (
           <div key={section} className="space-y-3">
             <div className="flex items-center gap-2">
               <div className="p-1.5 rounded-md bg-primary/10">
