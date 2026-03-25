@@ -21,6 +21,7 @@ const SCHEDULE_PRESETS = [
 
 const AVAILABLE_FUNCTIONS = [
   { label: "Send Training Reminders", value: "send-training-reminders" },
+  { label: "Send Compliance Notifications (Weekly Digest)", value: "send-compliance-notifications" },
 ];
 
 interface CreateCronJobDialogProps {
